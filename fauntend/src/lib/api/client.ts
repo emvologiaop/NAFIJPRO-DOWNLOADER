@@ -9,11 +9,10 @@
  * - Updated: 2026-04-14 - Increased timeouts for slow extractions
  */
 
-// Backend API URL - MUST be set via environment variable
-// No fallback - will fail explicitly if not configured
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Backend API URL - hardcoded production URL as fallback
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nafijpro-downloader.onrender.com';
 if (!API_URL && typeof window !== 'undefined') {
-    console.error('CRITICAL: NEXT_PUBLIC_API_URL environment variable is not set');
+    console.error('CRITICAL: NEXT_PUBLIC_API_URL environment variable is not set. Using hardcoded fallback.');
 }
 
 // Default configuration

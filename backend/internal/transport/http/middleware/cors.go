@@ -6,29 +6,10 @@ import (
 )
 
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
-	allowAll := len(allowedOrigins) == 0
-	allowed := make(map[string]struct{}, len(allowedOrigins))
-
-	for _, origin := range allowedOrigins {
-		trimmed := strings.TrimSpace(origin)
-		if trimmed == "" {
-			continue
-		}
-		allowed[trimmed] = struct{}{}
-	}
-
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := strings.TrimSpace(r.Header.Get("Origin"))
-
-			if allowAll {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-			} else if origin != "" {
-				if _, ok := allowed[origin]; ok {
-					w.Header().Set("Access-Control-Allow-Origin", origin)
-					w.Header().Set("Access-Control-Allow-Credentials", "true")
-				}
-			}
+			// CORS disabled for debugging - allow all origins
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
