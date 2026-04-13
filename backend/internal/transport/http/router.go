@@ -31,28 +31,75 @@ func NewRouter(h *handlers.Handler, cfg config.Config) http.Handler {
 
 	r.Get("/", h.Root)
 	r.Get("/health", h.Health)
+	r.Options("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	r.Get("/api/settings", h.Settings)
+	r.Options("/api/settings", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	r.Get("/api/v1/stats/public", h.PublicStats)
+	r.Options("/api/v1/stats/public", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	r.Get("/api/v1/status", h.Status)
+	r.Options("/api/v1/status", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	r.Get("/api/v1/communications", h.Communications)
+	r.Options("/api/v1/communications", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
 	r.Get("/metrics", h.Metrics)
+	r.Options("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	r.Route("/api/web", func(web chi.Router) {
 		web.Use(originProtected)
 		web.Use(webSignature)
 		web.Use(antiBot)
 		web.Post("/extract", h.Extract)
+		web.Options("/extract", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 		web.Get("/proxy", h.Proxy)
+		web.Options("/proxy", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 		web.Get("/download", h.Download)
+		web.Options("/download", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 		web.With(mergeEnabled).Post("/merge", h.Merge)
+		web.Options("/merge", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 	})
 
 	// Public API routes - protected by CORS + rate limiting
 	r.Route("/api/v1", func(v1 chi.Router) {
 		v1.Post("/extract", h.Extract)
+		v1.Options("/extract", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 		v1.Get("/proxy", h.Proxy)
+		v1.Options("/proxy", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 		v1.Get("/download", h.Download)
+		v1.Options("/download", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 		v1.With(mergeEnabled).Post("/merge", h.Merge)
+		v1.Options("/merge", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		})
 	})
 
 	return r
