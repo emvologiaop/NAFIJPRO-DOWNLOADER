@@ -12,12 +12,11 @@
  *   Vercel's response size limits.
  */
 
-// API_URL: empty = relative (auto-connect via Next.js rewrites)
-// When NEXT_PUBLIC_API_URL is set in Vercel it's used directly by the browser too.
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+// API_URL: Use hardcoded production URL as fallback to ensure connection
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nafijpro-downloader.onrender.com';
 
 if (!process.env.NEXT_PUBLIC_API_URL && typeof window !== 'undefined') {
-    console.info('[config] NEXT_PUBLIC_API_URL not set — using Next.js rewrite proxy (auto-connect)');
+    console.info('[config] NEXT_PUBLIC_API_URL not set — using hardcoded fallback: https://nafijpro-downloader.onrender.com');
 }
 
 // Supabase Configuration
@@ -30,7 +29,7 @@ export const APP_VERSION = '1.9.0';
 
 // Production URLs (used by SEO / structured data)
 export const PRODUCTION_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://downloader.nafij.me';
-export const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nafijthepro-downloader.onrender.com';
+export const RENDER_API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://nafijpro-downloader.onrender.com';
 
 // Feature Flags
 export const FEATURES = {
