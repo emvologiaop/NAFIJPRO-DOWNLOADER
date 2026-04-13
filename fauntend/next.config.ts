@@ -73,10 +73,9 @@ const nextConfig: NextConfig = {
         destination: `${BACKEND_URL}/api/v1/proxy`,
       },
       // Media extraction — POST, returns JSON
-      {
-        source: '/api/v1/extract',
-        destination: `${BACKEND_URL}/api/v1/extract`,
-      },
+      // NOTE: NOT rewritten - goes directly via NEXT_PUBLIC_API_URL to avoid Vercel's 3-10s timeout
+      // The extract endpoint can take 5-8s on slow platforms (YouTube, etc)
+
       // Merge — POST, streams merged video → direct via NEXT_PUBLIC_API_URL
       // (excluded from rewrite on purpose)
 
