@@ -3,7 +3,7 @@ fauntend/
 node_modules/
 .github/
 *.md
+*.json
+*.lock
 .gitignore
 .env.example
-package.json
-package-lock.json

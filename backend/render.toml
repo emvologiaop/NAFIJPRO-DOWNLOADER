@@ -1,0 +1,9 @@
+[build]
+builder = "docker"
+
+[service]
+type = "web_service"
+name = "downloader-api"
+runtime = "docker"
+plan = "pro"
+region = "oregon"
