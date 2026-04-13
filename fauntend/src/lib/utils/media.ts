@@ -17,6 +17,64 @@ import { RENDER_API_URL } from '@/lib/config';
 const API_URL = RENDER_API_URL;
 
 // ============================================================================
+// RETRY & TIMEOUT HELPERS
+// ============================================================================
+
+/**
+ * Fetch with automatic retry on transient errors
+ */
+async function fetchWithRetry(
+    url: string,
+    options?: RequestInit,
+    maxRetries: number = 3,
+    timeoutMs: number = 30000
+): Promise<Response> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+
+                // Retry on transient server errors
+                if (response.status >= 500 && attempt < maxRetries - 1) {
+                    const delay = Math.pow(2, attempt) * 1000;
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+
+                return response;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        } catch (error) {
+            // Check if it's a timeout or network error worth retrying
+            const isTransient = error instanceof Error && (
+                error.name === 'AbortError' ||
+                error.message.includes('Failed to fetch') ||
+                error.message.includes('NetworkError')
+            );
+
+            if (isTransient && attempt < maxRetries - 1) {
+                const delay = Math.pow(2, attempt) * 1000;
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+
+            throw error;
+        }
+    }
+
+    throw new Error('Max retries exceeded');
+}
+
+// ============================================================================
 // DOWNLOAD UTILITIES (from download-utils.ts)
 // ============================================================================
 
@@ -279,9 +337,9 @@ export type ProgressCallback = (progress: HLSDownloadProgress) => void;
  * Parse m3u8 playlist and extract segment URLs
  */
 async function parseM3U8(m3u8Url: string): Promise<string[]> {
-    // Fetch via proxy to bypass CORS
+    // Fetch via proxy to bypass CORS with retry logic
     const proxyUrl = `${API_URL}/api/v1/proxy?url=${encodeURIComponent(m3u8Url)}&inline=1`;
-    const res = await fetch(proxyUrl);
+    const res = await fetchWithRetry(proxyUrl, undefined, 3, 15000);
 
     if (!res.ok) {
         throw new Error(`Failed to fetch playlist: ${res.status}`);
@@ -320,23 +378,16 @@ async function parseM3U8(m3u8Url: string): Promise<string[]> {
 async function downloadSegment(url: string, retries = 3): Promise<ArrayBuffer> {
     const proxyUrl = `${API_URL}/api/v1/proxy?url=${encodeURIComponent(url)}`;
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const res = await fetch(proxyUrl);
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-            return await res.arrayBuffer();
-        } catch (error) {
-            if (attempt === retries) {
-                throw error;
-            }
-            // Wait before retry (exponential backoff)
-            await new Promise(r => setTimeout(r, 1000 * attempt));
+    try {
+        const res = await fetchWithRetry(proxyUrl, undefined, retries, 20000);
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
         }
+        return await res.arrayBuffer();
+    } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to download segment';
+        throw new Error(`Segment download failed: ${msg}`);
     }
-
-    throw new Error('Failed to download segment');
 }
 
 /**
@@ -790,17 +841,22 @@ export async function downloadMergedYouTube(
 
         let response: Response;
         try {
-            // Call merge API with abort signal
-            response = await fetch(`${API_URL}/api/v1/merge`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: youtubeUrl,
-                    quality,
-                    filename
-                }),
-                signal: abortSignal
-            });
+            // Call merge API with abort signal and retry logic
+            response = await fetchWithRetry(
+                `${API_URL}/api/v1/merge`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: youtubeUrl,
+                        quality,
+                        filename
+                    }),
+                    signal: abortSignal
+                },
+                3, // max retries
+                60000 // 60 second timeout for merge operations
+            );
         } catch (fetchError) {
             // Network error or abort - clear interval and rethrow
             clearInterval(fakeProgressInterval);
@@ -814,9 +870,23 @@ export async function downloadMergedYouTube(
         clearInterval(fakeProgressInterval);
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Merge failed' }));
-            console.error('[Merge Debug] Response not OK:', response.status, error);
-            throw new Error(error.error || `HTTP ${response.status}`);
+            let errorMessage: string;
+            const contentType = response.headers.get('content-type') || '';
+
+            try {
+                if (contentType.includes('application/json')) {
+                    const error = await response.json();
+                    errorMessage = error.error || error.message || `HTTP ${response.status}`;
+                } else {
+                    const text = await response.text();
+                    errorMessage = text.substring(0, 200) || `HTTP ${response.status}`;
+                }
+            } catch {
+                errorMessage = `HTTP ${response.status}`;
+            }
+
+            console.error('[Merge Debug] Response not OK:', response.status, errorMessage);
+            throw new Error(errorMessage);
         }
 
         // Debug Headers
@@ -1091,7 +1161,12 @@ export async function downloadMedia(
 
         // Case 3: Regular direct download
         const proxyUrl = getProxyUrl(format.url, { filename, platform });
-        const response = await fetch(proxyUrl, { signal: abortSignal });
+        const response = await fetchWithRetry(
+            proxyUrl,
+            { signal: abortSignal },
+            3, // max retries
+            30000 // 30 second timeout for regular downloads
+        );
         if (!response.ok) throw new Error(`Download failed: ${response.status}`);
 
         const contentLength = response.headers.get('content-length');

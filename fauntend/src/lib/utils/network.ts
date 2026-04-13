@@ -21,7 +21,17 @@ export function isOnline(): boolean {
  * Analyze fetch error and return user-friendly message
  */
 export function analyzeNetworkError(error: unknown): NetworkStatus {
-  const errorMsg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  let errorMsg = '';
+
+  if (error instanceof Error) {
+    errorMsg = error.message.toLowerCase();
+  } else if (typeof error === 'string') {
+    errorMsg = error.toLowerCase();
+  } else if (error && typeof error === 'object') {
+    errorMsg = JSON.stringify(error).toLowerCase();
+  } else {
+    errorMsg = 'unknown error';
+  }
   
   // Check browser online status first
   if (!isOnline()) {
@@ -101,11 +111,12 @@ export function isNetworkError(error: unknown): boolean {
 }
 
 /**
- * Wrapper for fetch with network error handling
+ * Wrapper for fetch with network error handling and retry logic
  */
 export async function fetchWithNetworkCheck<T>(
   url: string,
-  options?: RequestInit
+  options?: RequestInit,
+  maxRetries: number = 3
 ): Promise<{ success: true; data: T } | { success: false; networkError: NetworkStatus }> {
   // Pre-check online status
   if (!isOnline()) {
@@ -120,30 +131,98 @@ export async function fetchWithNetworkCheck<T>(
     };
   }
 
-  try {
-    const response = await fetch(url, options);
-    
-    if (!response.ok) {
-      // Server returned error status
-      if (response.status >= 500) {
-        return {
-          success: false,
-          networkError: {
+  let lastError: Error | NetworkStatus | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (!response.ok) {
+        // Server returned error status
+        if (response.status >= 500) {
+          // Transient errors - retry
+          if (attempt < maxRetries - 1) {
+            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          lastError = {
             online: true,
             type: 'server-error',
             message: 'Server Error',
             suggestion: 'Our server is having issues. Please try again in a few minutes.',
-          },
-        };
+          };
+          break;
+        } else if (response.status === 429) {
+          // Rate limit - retry
+          if (attempt < maxRetries - 1) {
+            const delay = Math.pow(2, attempt) * 2000; // Longer backoff for rate limit
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+        } else if (response.status >= 400) {
+          // Client errors - don't retry
+          const errorMsg = await response.text().catch(() => 'Request failed');
+          lastError = new Error(`HTTP ${response.status}: ${errorMsg}`);
+          break;
+        }
       }
-    }
 
-    const data = await response.json();
-    return { success: true, data };
-  } catch (error) {
+      // Try to parse as JSON, fallback to text if not JSON
+      let data: T;
+      const contentType = response.headers.get('content-type') || '';
+
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // For non-JSON responses, return response object itself
+        data = response as any;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      // Check if it's a transient error worth retrying
+      const isTransient = error instanceof Error && (
+        error.name === 'AbortError' ||
+        error.message.includes('timeout') ||
+        error.message.includes('timed out') ||
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('NetworkError')
+      );
+
+      if (isTransient && attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      // Not transient or last attempt
+      break;
+    }
+  }
+
+  // Return the last error
+  if (lastError instanceof Error) {
     return {
       success: false,
-      networkError: analyzeNetworkError(error),
+      networkError: analyzeNetworkError(lastError),
+    };
+  } else if (lastError && typeof lastError === 'object') {
+    return {
+      success: false,
+      networkError: lastError as NetworkStatus,
     };
   }
+
+  return {
+    success: false,
+    networkError: {
+      online: true,
+      type: 'unknown',
+      message: 'Request Failed',
+      suggestion: 'An unexpected error occurred. Please try again.',
+    },
+  };
 }

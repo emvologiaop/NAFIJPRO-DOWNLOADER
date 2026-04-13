@@ -927,12 +927,51 @@ export function DownloadPreview({ data, platform, onDownloadComplete }: Download
             }, 5000);
         } catch (e) {
             console.error('Download error:', e);
+
+            // Get proper error message with context
+            let errorMessage = 'Download failed';
+            let errorTitle = 'Download Failed';
+
+            if (e instanceof Error) {
+                errorMessage = e.message;
+
+                // Improve error titles based on message
+                if (e.message.includes('timeout') || e.message.includes('timed out')) {
+                    errorTitle = 'Download Timeout';
+                    errorMessage = 'The download took too long. Try selecting a lower quality or a smaller file.';
+                } else if (e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+                    errorTitle = 'Network Error';
+                    errorMessage = 'Connection failed. Check your internet connection and try again.';
+                } else if (e.message.includes('cancelled')) {
+                    errorTitle = 'Download Cancelled';
+                    errorMessage = 'The download was cancelled.';
+                } else if (e.message.includes('HTTP')) {
+                    errorTitle = 'Server Error';
+                    errorMessage = `Server returned: ${e.message}. Please try again later.`;
+                }
+            } else if (typeof e === 'string') {
+                errorMessage = e;
+            } else if (e && typeof e === 'object') {
+                errorMessage = JSON.stringify(e);
+            }
+
+            // Show error to user
+            Swal.fire({
+                icon: 'error',
+                title: errorTitle,
+                text: errorMessage,
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                showConfirmButton: true,
+                timer: 10000,
+            });
+
             setDownloadStatus(prev => ({ ...prev, [itemId]: 'error' }));
             setGlobalDownloadProgress(data.url, { status: 'error', percent: 0, loaded: 0, total: 0, speed: 0 });
-            
+
             // Cleanup abort controller
             delete abortControllersRef.current[itemId];
-            
+
             setTimeout(() => {
                 setDownloadStatus(prev => ({ ...prev, [itemId]: 'idle' }));
                 setGlobalDownloadProgress(data.url, { status: 'idle', percent: 0, loaded: 0, total: 0, speed: 0 });
