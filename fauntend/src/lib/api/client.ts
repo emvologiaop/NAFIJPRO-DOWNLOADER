@@ -195,11 +195,17 @@ export async function apiClient<T>(
     );
     
     const data = await response.json().catch(() => ({}));
-    
+
     if (!response.ok) {
-        throw new ApiError(response.status, data.error || 'Request failed', data);
+        // Ensure error message is a string (not an object)
+        const errorMessage = typeof data.error === 'string'
+            ? data.error
+            : typeof data.error === 'object'
+                ? JSON.stringify(data.error)
+                : 'Request failed';
+        throw new ApiError(response.status, errorMessage, data);
     }
-    
+
     return data as T;
 }
 
