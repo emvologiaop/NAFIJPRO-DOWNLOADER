@@ -1,11 +1,12 @@
 /**
  * API Client for Backend Communication
  * Handles all requests to the backend API
- * 
+ *
  * Features:
  * - Configurable request timeout (Issue #3)
  * - Exponential backoff retry for 5xx errors (Issue #12)
  * - Fast offline detection
+ * - Updated: 2026-04-14 - Increased timeouts for slow extractions
  */
 
 // Backend API URL - MUST be set via environment variable
