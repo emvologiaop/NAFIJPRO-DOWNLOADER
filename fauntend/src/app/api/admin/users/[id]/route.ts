@@ -21,7 +21,7 @@ function verifyAdminPassword(request: NextRequest): boolean {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     if (!verifyAdminPassword(request)) {
@@ -32,10 +32,12 @@ export async function GET(
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
+    const { id } = await params;
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error) {
@@ -54,7 +56,7 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     if (!verifyAdminPassword(request)) {
@@ -65,6 +67,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
+    const { id } = await params;
     const body = await request.json();
 
     // Allowed fields to update
@@ -84,7 +87,7 @@ export async function PATCH(
     const { data, error } = await supabase
       .from('users')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -108,7 +111,7 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     if (!verifyAdminPassword(request)) {
@@ -119,9 +122,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
+    const { id } = await params;
+
     // Delete from auth first (if exists)
     try {
-      await supabase.auth.admin.deleteUser(params.id);
+      await supabase.auth.admin.deleteUser(id);
     } catch {
       // User might not exist in auth, continue with database deletion
     }
@@ -130,7 +135,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('users')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
