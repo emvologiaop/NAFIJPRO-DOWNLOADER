@@ -1,15 +1,20 @@
-# render.yaml - Render deployment configuration
-# Backend: nafijthepro-downloader.onrender.com
+# Render Blueprint: NAFIJPRO-DOWNLOADER Backend
+# Auto-deploy backend to Render with all required settings
 
 services:
   - type: web
-    name: nafijthepro-downloader
+    name: downloader-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     region: oregon
     plan: free
+    autoDeploy: true
     healthCheckPath: /health
+    healthCheckInterval: 30
+    healthCheckTimeout: 5
+    healthCheckStartPeriod: 10
+    maxShutdownDelaySeconds: 30
     envVars:
       - key: PORT
         value: "10000"
@@ -17,8 +22,12 @@ services:
         value: production
       - key: WEB_INTERNAL_SHARED_SECRET
         generateValue: true
+      - key: PUBLIC_BASE_URL
+        fromService:
+          type: web
+          property: url
       - key: ALLOWED_ORIGINS
-        value: "https://nafijthepro-downloader.vercel.app,https://downloader.nafij.me,https://downloader.nafijrahaman.me"
+        value: "https://*.vercel.app"
       - key: MERGE_ENABLED
         value: "true"
       - key: UPSTREAM_TIMEOUT_MS
@@ -26,8 +35,13 @@ services:
       - key: MAX_DOWNLOAD_SIZE_MB
         value: "512"
       - key: GLOBAL_RATE_LIMIT_WINDOW
-        value: "60/1m"
+        value: "100/1m"
+      - key: EXTRACTION_MAX_RETRIES
+        value: "3"
       - key: CACHE_EXTRACTION_TTL
         value: "5m"
       - key: CACHE_PROXY_HEAD_TTL
         value: "45s"
+      - key: STATS_PERSIST_ENABLED
+        value: "true"
+
