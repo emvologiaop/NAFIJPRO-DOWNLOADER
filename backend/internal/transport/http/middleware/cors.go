@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
 )
 
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
