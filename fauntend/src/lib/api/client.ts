@@ -183,9 +183,14 @@ export async function apiClient<T>(
     }
     
     const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
-    
+
+    // Log the actual URL being used (for debugging connection issues)
+    if (typeof window !== 'undefined') {
+        console.debug(`[API Client] ${fetchOptions.method || 'GET'} ${url} (timeout: ${timeout}ms)`);
+    }
+
     const response = await fetchWithRetry(
-        url, 
+        url,
         {
             ...fetchOptions,
             headers,

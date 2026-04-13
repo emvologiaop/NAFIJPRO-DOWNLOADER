@@ -59,9 +59,10 @@ func (h *Handler) Extract(w http.ResponseWriter, r *http.Request) {
 
 	builder.WithCookieSource(cookieSourceLabel(strings.TrimSpace(req.Cookie)))
 
-	// Create a context with timeout for the extract operation (max 85 seconds)
-	// This prevents extraction from hanging indefinitely
-	ctx, cancel := context.WithTimeout(r.Context(), 85*time.Second)
+	// Create a context with timeout for the extract operation
+	// Configurable via EXTRACTION_TIMEOUT_SECONDS environment variable (default: 85)
+	extractTimeoutSeconds := time.Duration(h.config.ExtractionTimeoutSeconds) * time.Second
+	ctx, cancel := context.WithTimeout(r.Context(), extractTimeoutSeconds)
 	defer cancel()
 
 	result, err := h.extractor.Extract(ctx, extraction.ExtractInput{

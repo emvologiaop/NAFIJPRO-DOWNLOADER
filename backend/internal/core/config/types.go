@@ -39,8 +39,9 @@ type Config struct {
 	StatsPersistFlushIntervalMS     int
 	StatsPersistFlushThreshold      int
 
-	ExtractionMaxRetries   int
-	ExtractionRetryDelayMs int
+	ExtractionMaxRetries     int
+	ExtractionRetryDelayMs   int
+	ExtractionTimeoutSeconds int
 
 	// Cache TTL configurations
 	CacheExtractionTTL          time.Duration            // Default TTL for extraction results (default: 5m)

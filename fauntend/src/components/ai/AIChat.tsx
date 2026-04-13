@@ -292,6 +292,10 @@ export function AIChat({ className = '' }: AIChatProps) {
                 imageData = { mimeType, data: base64 };
             }
 
+            if (!API_URL) {
+                throw new Error('API URL not configured. Please set NEXT_PUBLIC_API_URL.');
+            }
+
             const response = await fetch(`${API_URL}/api/v1/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

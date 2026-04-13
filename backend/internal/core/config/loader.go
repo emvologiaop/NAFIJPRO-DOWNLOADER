@@ -28,6 +28,12 @@ func Load() Config {
 	)
 	globalRateLimitRule := formatGlobalRateLimitRule(globalRateLimitLimit, globalRateLimitWindow)
 
+	// Extraction timeout
+	extractionTimeoutSeconds := getIntEnv("EXTRACTION_TIMEOUT_SECONDS", 85)
+	if extractionTimeoutSeconds < 10 {
+		extractionTimeoutSeconds = 85
+	}
+
 	// Upstream timeout
 	timeoutMS := getIntEnv("UPSTREAM_TIMEOUT_MS", 15000)
 	if timeoutMS < 1 {
@@ -130,6 +136,7 @@ func Load() Config {
 		StatsPersistFlushThreshold:      statsPersistFlushThreshold,
 		ExtractionMaxRetries:            extractionMaxRetries,
 		ExtractionRetryDelayMs:          extractionRetryDelayMs,
+		ExtractionTimeoutSeconds:        extractionTimeoutSeconds,
 		CacheExtractionTTL:              extractionDefaultTTL,
 		CacheExtractionPlatformTTLs:     map[string]time.Duration{},
 		CacheProxyHeadTTL:               cacheProxyHeadTTL,
