@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"downaria-api/internal/app/services/extraction"
 	apperrors "downaria-api/internal/core/errors"
+	"downaria-api/internal/shared/logger"
 	"downaria-api/internal/transport/http/middleware"
 	"downaria-api/pkg/response"
 )
@@ -70,6 +72,12 @@ func (h *Handler) Extract(w http.ResponseWriter, r *http.Request) {
 		Cookie: req.Cookie,
 	})
 	if err != nil {
+		// Log extraction errors for debugging
+		logger.Warn("Extraction error",
+			"url", req.URL,
+			"error", err.Error(),
+			"error_type", fmt.Sprintf("%T", err),
+		)
 		status, code, message, category, metadata, retryAfter := h.mapExtractError(err)
 		if retryAfter > 0 {
 			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
