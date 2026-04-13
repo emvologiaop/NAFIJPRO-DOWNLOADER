@@ -106,7 +106,6 @@ export function useScraperCache(options: UseScraperCacheOptions = {}) {
       const result = await api.post<ScraperResponse>('/api/v1/extract', {
         url,
         cookie,
-        skipCache: true, // Always skip server cache - we handle caching client-side
       });
 
       // Cache successful result
@@ -172,7 +171,6 @@ export async function fetchMediaWithCache(
     const result = await api.post<ScraperResponse>('/api/v1/extract', {
       url,
       cookie,
-      skipCache: true,
     });
 
     // Cache successful result
