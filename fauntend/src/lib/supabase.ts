@@ -27,13 +27,14 @@ export async function signIn(email: string, password: string) {
     return { data, error };
 }
 
-export async function signUp(email: string, password: string, username?: string) {
+export async function signUp(email: string, password: string, username?: string, role?: string) {
     const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
             data: {
                 username: username || email.split('@')[0],
+                role: role || 'user',
             },
         },
     });

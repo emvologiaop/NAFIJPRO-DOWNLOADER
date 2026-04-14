@@ -199,7 +199,8 @@ function AuthContent() {
                     }
                 }
                 
-                const result = await signUp(identifier, password, username || undefined);
+                // Sign up with the verified role from referral code
+                const result = await signUp(identifier, password, username || undefined, verifiedRole || undefined);
                 if (result.error) {
                     setError(result.error.message || 'Registration failed');
                 } else if (result.data?.user && supabase) {
@@ -213,23 +214,15 @@ function AuthContent() {
                                 .eq('code', referralCode)
                                 .eq('is_active', true)
                                 .single();
-                            
+
                             if (specialRef) {
                                 // Increment current_uses using RPC
                                 await supabase.rpc('increment_referral_uses', { referral_id: specialRef.id });
-                                
-                                // Update user role if admin
-                                if (specialRef.role === 'admin') {
-                                    await supabase
-                                        .from('users')
-                                        .update({ role: 'admin' })
-                                        .eq('id', result.data.user.id);
-                                }
                             } else {
-                                // Normal user referral - increment referrer's total_referrals
+                                // Normal user referral - store referral code
                                 await supabase
                                     .from('users')
-                                    .update({ referred_by: referralCode })
+                                    .update({ invited_by: referralCode })
                                     .eq('id', result.data.user.id);
                             }
                         } catch {

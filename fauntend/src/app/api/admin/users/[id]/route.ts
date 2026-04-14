@@ -13,59 +13,30 @@ const supabase = supabaseUrl && supabaseServiceKey
     })
   : null;
 
+/**
+ * Verify admin password from Authorization header
+ */
 function verifyAdminPassword(request: NextRequest): boolean {
   const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
   if (!adminPassword) {
-    console.error('ADMIN_PASSWORD not configured');
+    console.error('[Auth] ADMIN_PASSWORD not configured in environment');
     return false;
   }
+
   const authHeader = request.headers.get('authorization') || '';
   const providedPassword = authHeader.replace('Bearer ', '').trim();
+
   return providedPassword === adminPassword;
 }
 
 /**
- * GET /api/admin/users/[id]
- * Get single user details
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    if (!verifyAdminPassword(request)) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
-    }
-
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
-
-    const { id } = await params;
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-/**
  * PATCH /api/admin/users/[id]
- * Update user (role, email, etc)
+ * Update user details
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     if (!verifyAdminPassword(request)) {
@@ -76,51 +47,46 @@ export async function PATCH(
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    const { id } = await params;
+    const { id } = params;
     const body = await request.json();
 
-    // Allowed fields to update
-    const allowedFields = ['role', 'email', 'username', 'is_banned', 'ban_reason'];
-    const updateData: any = {};
+    console.log(`[Users] Updating user ${id}:`, body);
 
-    for (const field of allowedFields) {
-      if (field in body) {
-        updateData[field] = body[field];
-      }
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
-    }
-
-    const { data, error } = await supabase
+    const { data: updatedUser, error } = await supabase
       .from('users')
-      .update(updateData)
+      .update(body)
       .eq('id', id)
-      .select()
+      .select('id, email, username, role, created_at, is_banned, ban_reason')
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[Users] Update error:', error);
+      return NextResponse.json(
+        { error: `Failed to update user: ${error.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'User updated successfully',
-      data,
+      data: updatedUser,
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[Users] Exception:', error);
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
   }
 }
 
 /**
  * DELETE /api/admin/users/[id]
- * Delete user
+ * Delete a user
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     if (!verifyAdminPassword(request)) {
@@ -131,23 +97,21 @@ export async function DELETE(
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
-    const { id } = await params;
+    const { id } = params;
 
-    // Delete from auth first (if exists)
-    try {
-      await supabase.auth.admin.deleteUser(id);
-    } catch {
-      // User might not exist in auth, continue with database deletion
-    }
+    console.log(`[Users] Deleting user ${id}`);
 
-    // Delete from users table
     const { error } = await supabase
       .from('users')
       .delete()
       .eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[Users] Delete error:', error);
+      return NextResponse.json(
+        { error: `Failed to delete user: ${error.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -155,6 +119,10 @@ export async function DELETE(
       message: 'User deleted successfully',
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[Users] Exception:', error);
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
   }
 }

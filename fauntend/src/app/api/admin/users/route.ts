@@ -115,3 +115,60 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+/**
+ * POST /api/admin/users
+ * Create a new user
+ */
+export async function POST(request: NextRequest) {
+  try {
+    if (!verifyAdminPassword(request)) {
+      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    }
+
+    if (!supabase) {
+      console.error('Supabase not configured');
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
+
+    const body = await request.json();
+    const { email, role = 'user' } = body;
+
+    if (!email || !email.trim()) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+
+    console.log(`[Users] Creating new user: ${email} with role: ${role}`);
+
+    // Insert user directly into users table
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        email: email.trim(),
+        role: role || 'user',
+      })
+      .select('id, email, username, role, created_at, is_banned, ban_reason')
+      .single();
+
+    if (error) {
+      console.error('[Users] Create error:', error);
+      return NextResponse.json(
+        { error: `Failed to create user: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[Users] User created successfully: ${email}`);
+
+    return NextResponse.json({
+      success: true,
+      data: newUser,
+    });
+  } catch (error) {
+    console.error('[Users] Exception:', error);
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
+  }
+}

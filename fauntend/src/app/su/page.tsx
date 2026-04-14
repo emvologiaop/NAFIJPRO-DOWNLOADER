@@ -88,6 +88,7 @@ export default function AdminDashboard() {
   // Edit states
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null);
   const [editingReferral, setEditingReferral] = useState<Partial<Referral> | null>(null);
+  const [newUser, setNewUser] = useState({ email: '', role: 'user' });
   const [newReferral, setNewReferral] = useState({ code: '', role: 'user', max_uses: '0' });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -241,6 +242,60 @@ export default function AdminDashboard() {
         });
         setEditingUser(null);
         await loadUsers(userPage);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: getErrorMessage(error),
+        background: 'var(--bg-card)',
+        color: 'var(--text-primary)',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUser.email.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Missing Email',
+        text: 'Please enter an email address',
+        background: 'var(--bg-card)',
+        color: 'var(--text-primary)',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: newUser.email.trim(),
+          role: newUser.role,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'User Created',
+          text: `${newUser.email} created successfully`,
+          background: 'var(--bg-card)',
+          color: 'var(--text-primary)',
+          timer: 2000,
+        });
+        setNewUser({ email: '', role: 'user' });
+        await loadUsers(1);
       } else {
         throw new Error(data.error);
       }
@@ -543,6 +598,34 @@ export default function AdminDashboard() {
             {/* Users Tab */}
             {tab === 'users' && (
               <div className="space-y-4">
+                <div className="glass-card p-6">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Plus className="w-5 h-5" /> Create New User
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      className="input-url"
+                      placeholder="Email address"
+                      disabled={isLoading}
+                    />
+                    <select
+                      value={newUser.role}
+                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                      className="input-url"
+                      disabled={isLoading}
+                    >
+                      <option value="user">User Role</option>
+                      <option value="admin">Admin Role</option>
+                    </select>
+                    <Button onClick={handleCreateUser} disabled={isLoading || !newUser.email}>
+                      Create User
+                    </Button>
+                  </div>
+                </div>
+
                 {editingUser ? (
                   <div className="glass-card p-6">
                     <h2 className="text-xl font-bold mb-4">Edit User</h2>
