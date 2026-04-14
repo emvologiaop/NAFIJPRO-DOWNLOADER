@@ -45,25 +45,38 @@ export async function POST(req: NextRequest) {
       body: bodyText,
     });
 
-    // If response is a stream (blob), we need to handle it specially
-    if (response.headers.get('content-type')?.includes('video') ||
-        response.headers.get('content-type')?.includes('audio') ||
-        response.headers.get('content-disposition')) {
+    const contentType = response.headers.get('content-type');
+    const isStreamResponse = contentType?.includes('video') ||
+                           contentType?.includes('audio') ||
+                           contentType?.includes('application/octet-stream') ||
+                           response.headers.has('content-disposition');
+
+    if (isStreamResponse) {
       // Stream the response back as-is for file downloads
       const buffer = await response.arrayBuffer();
       return new Response(buffer, {
         status: response.status,
         headers: {
-          'Content-Type': response.headers.get('content-type') || 'application/octet-stream',
-          'Content-Disposition': response.headers.get('content-disposition') || 'attachment',
+          'Content-Type': contentType || 'application/octet-stream',
+          'Content-Disposition': response.headers.get('content-disposition') || 'attachment; filename="audio.mp4"',
           'Content-Length': String(buffer.byteLength),
         },
       });
     }
 
-    // For JSON responses
-    const data = await response.json();
-    return Response.json(data, { status: response.status });
+    // For JSON responses (errors)
+    let jsonData;
+    try {
+      jsonData = await response.json();
+    } catch {
+      // If JSON parsing fails, return the raw text as error
+      const text = await response.text();
+      return Response.json(
+        { error: text || 'Unknown error from server' },
+        { status: response.status || 500 }
+      );
+    }
+    return Response.json(jsonData, { status: response.status });
   } catch (error) {
     console.error('[Merge Route] Error:', error);
     return Response.json(
