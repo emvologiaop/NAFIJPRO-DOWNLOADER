@@ -1,20 +1,39 @@
 import { NextRequest } from 'next/server';
+import { generateWebSignature } from '../_internal/signature';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const WEB_INTERNAL_SHARED_SECRET = process.env.WEB_INTERNAL_SHARED_SECRET || '';
 
 export async function POST(req: NextRequest) {
   try {
     // Get the request body
-    const body = await req.json();
+    const bodyText = await req.text();
+    const body = JSON.parse(bodyText);
 
-    // Forward directly to backend merge endpoint
-    // No signing needed - frontend calls this local route, not backend directly
-    const response = await fetch(`${BACKEND_URL}/api/v1/merge`, {
+    // Generate signature for backend
+    let headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (WEB_INTERNAL_SHARED_SECRET) {
+      // Sign request using WEB_INTERNAL_SHARED_SECRET
+      const { signature, timestamp, nonce } = generateWebSignature(
+        'POST',
+        '/api/web/merge',
+        WEB_INTERNAL_SHARED_SECRET,
+        bodyText
+      );
+
+      headers['X-Downaria-Signature'] = signature;
+      headers['X-Downaria-Timestamp'] = timestamp;
+      headers['X-Downaria-Nonce'] = nonce;
+    }
+
+    // Forward to backend merge endpoint with signature
+    const response = await fetch(`${BACKEND_URL}/api/web/merge`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
+      headers,
+      body: bodyText,
     });
 
     // If response is a stream (blob), we need to handle it specially
