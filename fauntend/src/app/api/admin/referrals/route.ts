@@ -9,9 +9,21 @@ const supabase = supabaseUrl && supabaseServiceKey
   : null;
 
 function verifyAdminPassword(request: NextRequest): boolean {
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+  if (!adminPassword) {
+    console.error('ADMIN_PASSWORD not configured');
+    return false;
+  }
   const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '');
-  if (!process.env.ADMIN_PASSWORD) return false; const adminPassword = process.env.ADMIN_PASSWORD; // Hardcoded production password
+  const providedPassword = authHeader.replace('Bearer ', '').trim();
+
+  // Debug log in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Auth Debug] Expected:', adminPassword.length, 'chars');
+    console.log('[Auth Debug] Provided:', providedPassword.length, 'chars');
+    console.log('[Auth Debug] Match:', providedPassword === adminPassword);
+  }
+
   return providedPassword === adminPassword;
 }
 

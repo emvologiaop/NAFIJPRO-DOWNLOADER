@@ -12,13 +12,22 @@ const supabase = supabaseUrl && supabaseServiceKey
  * Verify admin password from Authorization header
  */
 function verifyAdminPassword(request: NextRequest): boolean {
-  if (!process.env.ADMIN_PASSWORD) {
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+  if (!adminPassword) {
     console.error('ADMIN_PASSWORD not configured');
     return false;
   }
   const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '');
-  return providedPassword === process.env.ADMIN_PASSWORD;
+  const providedPassword = authHeader.replace('Bearer ', '').trim();
+
+  // Debug log in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Auth Debug] Expected:', adminPassword.length, 'chars');
+    console.log('[Auth Debug] Provided:', providedPassword.length, 'chars');
+    console.log('[Auth Debug] Match:', providedPassword === adminPassword);
+  }
+
+  return providedPassword === adminPassword;
 }
 
 /**
