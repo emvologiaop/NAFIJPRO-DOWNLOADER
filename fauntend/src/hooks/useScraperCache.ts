@@ -33,8 +33,8 @@ import type { PlatformId, MediaData, MediaFormat } from '@/lib/types';
 
 /**
  * Transform backend response to frontend format
- * Backend returns: { media: [{ variants: [...] }] }
- * Frontend expects: { formats: [...] }
+ * Backend returns: { media: [{ variants: [...] }], content: {...}, engagement: {...} }
+ * Frontend expects: { formats: [...], title, author, views, etc. }
  */
 function transformBackendResponse(data: any): Partial<MediaData> {
   if (!data) return {};
@@ -67,8 +67,32 @@ function transformBackendResponse(data: any): Partial<MediaData> {
     }
   }
 
+  // Extract and flatten fields from nested objects
+  let title = data.content?.text || data.title || '';
+  let description = data.content?.description || data.description || '';
+  let authorStr: string | undefined;
+
+  if (data.author) {
+    if (typeof data.author === 'string') {
+      authorStr = data.author;
+    } else if (typeof data.author === 'object' && data.author.name) {
+      authorStr = data.author.name;
+    }
+  }
+
+  // Convert engagement numbers to strings for display
+  const views = data.engagement?.views
+    ? String(data.engagement.views)
+    : (data.views ? String(data.views) : undefined);
+
   return {
-    ...data,
+    title,
+    description,
+    author: authorStr,
+    views,
+    url: data.url,
+    thumbnail: data.media?.[0]?.thumbnail || data.thumbnail,
+    engagement: data.engagement,
     formats: formats.length > 0 ? formats : data.formats || [],
   };
 }
