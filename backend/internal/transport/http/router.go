@@ -110,10 +110,16 @@ func NewRouter(h *handlers.Handler, cfg config.Config) http.Handler {
 
 	// Admin API Key routes
 	r.Route("/api/admin", func(admin chi.Router) {
+		// API Key management
 		admin.Post("/api-keys/create", h.CreateAPIKey)
 		admin.Get("/api-keys", h.ListAPIKeys)
 		admin.Delete("/api-keys", h.DeleteAPIKey)
 		admin.Get("/api-keys/stats", h.GetAPIKeyStats)
+
+		// Aliases for frontend compatibility (with/without hyphens)
+		admin.Get("/apikeys", h.ListAPIKeys)
+		admin.Get("/stats", h.GetAPIKeyStats)
+		admin.Get("/services", h.GetAPIKeyStats) // Same as stats for now
 	})
 
 	return r
