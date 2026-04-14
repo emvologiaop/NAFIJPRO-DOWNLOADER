@@ -50,6 +50,8 @@ const NAV_ITEMS = {
     user: [
         { href: '/admin', label: 'Overview', icon: LayoutDashboard },
         { href: '/admin/access', label: 'Access', icon: Key },
+        { href: '/admin/api-keys', label: 'API Keys', icon: Shield },
+        { href: '/admin/extract-playground', label: 'Extract Playground', icon: Database },
     ],
     admin: [
         { href: '/admin/platforms', label: 'Platforms', icon: Globe },
