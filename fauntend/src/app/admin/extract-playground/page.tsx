@@ -63,7 +63,8 @@ export default function ExtractPlaygroundPage() {
         });
       }
     } catch (err) {
-      setError(err.message || 'Failed to make request');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to make request';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
