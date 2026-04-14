@@ -3,11 +3,31 @@
 import { useState, useEffect } from 'react';
 import { Copy, Trash2, Plus, RefreshCw } from 'lucide-react';
 
+interface ApiKeyResponse {
+  id: string;
+  key: string;
+  preview: string;
+  name: string;
+  message: string;
+}
+
+interface ApiKey {
+  id: string;
+  preview: string;
+  name: string;
+  enabled: boolean;
+  rate_limit_per_minute: number;
+  created_at: string;
+  last_used_at?: string;
+  expire_at?: string;
+  expired?: boolean;
+}
+
 export default function APIKeysPage() {
-  const [keys, setKeys] = useState([]);
+  const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newKey, setNewKey] = useState(null);
+  const [newKey, setNewKey] = useState<ApiKeyResponse | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     rate_limit_per_minute: 60,

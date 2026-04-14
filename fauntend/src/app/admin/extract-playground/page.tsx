@@ -3,13 +3,23 @@
 import { useState } from 'react';
 import { Play, Copy, Download } from 'lucide-react';
 
+interface ExtractResponse {
+  [key: string]: unknown;
+}
+
+interface ApiStats {
+  statusCode: number;
+  responseTime: string;
+  timestamp: string;
+}
+
 export default function ExtractPlaygroundPage() {
   const [url, setUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState(null);
-  const [error, setError] = useState(null);
-  const [stats, setStats] = useState(null);
+  const [response, setResponse] = useState<ExtractResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<ApiStats | null>(null);
 
   const handleTest = async () => {
     if (!url) {
