@@ -69,6 +69,25 @@ type Config struct {
 	ConcurrentMergeRollout   int
 	HLSStreamingRollout      int
 	HLSMergeRollout          int
+
+	// AI Provider Configuration
+	GroqAPIKey      string
+	GroqAPIEndpoint string
+	GroqModel       string
+	GroqTimeout     time.Duration
+	OpenAIAPIKey    string
+	ClaudeAPIKey    string
+	GeminiAPIKey    string
+	AzureAPIKey     string
+
+	// AI Settings
+	AIProviderPriority  []string
+	AIProviderTimeout   time.Duration
+	AIMaxRetries        int
+	EncryptionKey       string
+	HMACSecret          string
+	SupabaseURL         string
+	SupabaseKey         string
 }
 
 // CacheDefaults returns default cache TTL values
