@@ -346,10 +346,13 @@ export function DownloadPreview({ data, platform, onDownloadComplete }: Download
                 let errorMsg = `HTTP ${response.status}`;
                 try {
                     const errorData = await response.json();
-                    errorMsg = errorData.error || errorData.message || errorMsg;
-                    // Handle case where error is an object
-                    if (typeof errorMsg === 'object') {
-                        errorMsg = errorMsg.message || JSON.stringify(errorMsg).substring(0, 100);
+                    if (typeof errorData.error === 'string') {
+                        errorMsg = errorData.error;
+                    } else if (typeof errorData.message === 'string') {
+                        errorMsg = errorData.message;
+                    } else if (typeof errorData.error === 'object' && errorData.error !== null) {
+                        const err = errorData.error as any;
+                        errorMsg = err.message || JSON.stringify(errorData.error).substring(0, 100);
                     }
                 } catch (parseErr) {
                     // If JSON parsing fails, try to get text
