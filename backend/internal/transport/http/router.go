@@ -115,3 +115,6 @@ func NewRouter(h *handlers.Handler, cfg config.Config) http.Handler {
 		admin.Delete("/api-keys", h.DeleteAPIKey)
 		admin.Get("/api-keys/stats", h.GetAPIKeyStats)
 	})
+
+	return r
+}

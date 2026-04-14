@@ -81,13 +81,16 @@ type Config struct {
 	AzureAPIKey     string
 
 	// AI Settings
-	AIProviderPriority  []string
-	AIProviderTimeout   time.Duration
-	AIMaxRetries        int
-	EncryptionKey       string
-	HMACSecret          string
-	SupabaseURL         string
-	SupabaseKey         string
+	AIProviderPriority []string
+	AIProviderTimeout  time.Duration
+	AIMaxRetries       int
+	EncryptionKey      string
+	HMACSecret         string
+	SupabaseURL        string
+	SupabaseKey        string
+
+	// Database Configuration
+	DatabaseURL string
 }
 
 // CacheDefaults returns default cache TTL values

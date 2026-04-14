@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -38,6 +39,8 @@ type Handler struct {
 	concurrentDownloader *network.ConcurrentDownloader
 	mergePool            *merge.MergeWorkerPool
 	metrics              *metrics.ContentDeliveryMetrics
+
+	db *sql.DB
 }
 
 type statsStoreCloser interface {
@@ -163,6 +166,10 @@ func upstreamTransportTimeout(value, fallback time.Duration) time.Duration {
 	return fallback
 }
 
+func (h *Handler) SetDatabase(db *sql.DB) {
+	h.db = db
+}
+
 func (h *Handler) Close() error {
 	if h.mergePool != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -184,21 +191,21 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 
 // API Key handlers
 func (h *Handler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
-	// Placeholder - requires database integration
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	apiKeyHandler := NewAPIKeyHandler(h.db)
+	apiKeyHandler.CreateAPIKey(w, r)
 }
 
 func (h *Handler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
-	// Placeholder - requires database integration
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	apiKeyHandler := NewAPIKeyHandler(h.db)
+	apiKeyHandler.ListAPIKeys(w, r)
 }
 
 func (h *Handler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
-	// Placeholder - requires database integration
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	apiKeyHandler := NewAPIKeyHandler(h.db)
+	apiKeyHandler.DeleteAPIKey(w, r)
 }
 
 func (h *Handler) GetAPIKeyStats(w http.ResponseWriter, r *http.Request) {
-	// Placeholder - requires database integration
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	apiKeyHandler := NewAPIKeyHandler(h.db)
+	apiKeyHandler.GetKeyStats(w, r)
 }

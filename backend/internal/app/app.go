@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"downaria-api/internal/core/config"
+	"downaria-api/internal/infra/database"
 	"downaria-api/internal/shared/logger"
 	"downaria-api/internal/shared/util"
 	httptransport "downaria-api/internal/transport/http"
@@ -23,6 +25,19 @@ type Application struct {
 
 func New(cfg config.Config) *Application {
 	h := handlers.NewHandler(cfg, time.Now().UTC())
+
+	// Initialize database connection if DATABASE_URL is provided
+	var db *sql.DB
+	if cfg.DatabaseURL != "" {
+		var err error
+		db, err = database.Connect(cfg.DatabaseURL)
+		if err != nil {
+			logger.Warn("Failed to connect to database", "error", err)
+		} else {
+			h.SetDatabase(db)
+		}
+	}
+
 	router := httptransport.NewRouter(h, cfg)
 	trustedProxies, err := util.NewIPAllowlist(cfg.TrustedProxyCIDRs)
 	if err != nil {
@@ -73,7 +88,21 @@ func New(cfg config.Config) *Application {
 		MaxHeaderBytes:    fallbackInt(cfg.ServerMaxHeaderBytes, 1<<20),
 	}
 
-	return &Application{server: server, shutdownHook: h.Close}
+	return &Application{
+		server: server,
+		shutdownHook: func() error {
+			var errs []error
+			if err := h.Close(); err != nil {
+				errs = append(errs, err)
+			}
+			if db != nil {
+				if err := db.Close(); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			return errors.Join(errs...)
+		},
+	}
 }
 
 func (a *Application) Start() error {

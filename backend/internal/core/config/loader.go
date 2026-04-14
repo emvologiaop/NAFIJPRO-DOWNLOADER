@@ -154,6 +154,7 @@ func Load() Config {
 		ConcurrentMergeRollout:          100, // Always 100%
 		HLSStreamingRollout:             100, // Always 100%
 		HLSMergeRollout:                 100, // Always 100%
+		DatabaseURL:                     strings.TrimSpace(getEnv("DATABASE_URL", "")),
 	}
 }
 

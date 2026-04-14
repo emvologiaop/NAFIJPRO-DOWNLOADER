@@ -10,5 +10,6 @@ require (
 
 require (
 	github.com/grafov/m3u8 v0.12.1 // indirect
+	github.com/lib/pq v1.12.3 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
 )
