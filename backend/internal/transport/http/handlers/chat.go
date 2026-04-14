@@ -94,13 +94,23 @@ func (h *ChatHandler) chatGroq(w http.ResponseWriter, req ChatRequest) {
 		return
 	}
 
-	// Determine model
+	// Determine model and map to Groq API model name
 	model := req.Model
-	if !strings.HasPrefix(model, "groq-") {
+	var apiModel string
+
+	// Map frontend model names to Groq API model names
+	switch {
+	case strings.Contains(model, "70b"):
+		apiModel = "llama-3.1-70b-versatile"
+		model = "groq-llama-3.1-70b"
+	case strings.Contains(model, "8b"):
+		apiModel = "llama-3.1-8b-instant"
+		model = "groq-llama-3.1-8b"
+	default:
+		// Default to 70b
+		apiModel = "llama-3.1-70b-versatile"
 		model = "groq-llama-3.1-70b"
 	}
-	// Remove "groq-" prefix for API
-	apiModel := strings.TrimPrefix(model, "groq-")
 
 	groqReq := map[string]interface{}{
 		"model": apiModel,
