@@ -27,6 +27,19 @@ type Referral = {
   created_at: string;
 };
 
+// Helper to convert errors to readable strings
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as any).message);
+  }
+  if (error && typeof error === 'object' && 'error' in error) {
+    return String((error as any).error);
+  }
+  return 'An unknown error occurred';
+}
+
 export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>('login');
   const [password, setPassword] = useState('');
@@ -150,7 +163,7 @@ export default function AdminDashboard() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: String(error),
+        text: getErrorMessage(error),
         background: 'var(--bg-card)',
         color: 'var(--text-primary)',
       });
@@ -198,7 +211,7 @@ export default function AdminDashboard() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: String(error),
+        text: getErrorMessage(error),
         background: 'var(--bg-card)',
         color: 'var(--text-primary)',
       });
@@ -253,7 +266,7 @@ export default function AdminDashboard() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: String(error),
+        text: getErrorMessage(error),
         background: 'var(--bg-card)',
         color: 'var(--text-primary)',
       });
@@ -294,7 +307,7 @@ export default function AdminDashboard() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: String(error),
+        text: getErrorMessage(error),
         background: 'var(--bg-card)',
         color: 'var(--text-primary)',
       });
@@ -342,7 +355,7 @@ export default function AdminDashboard() {
       Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: String(error),
+        text: getErrorMessage(error),
         background: 'var(--bg-card)',
         color: 'var(--text-primary)',
       });
