@@ -9,9 +9,16 @@ const supabase = supabaseUrl && supabaseServiceKey
   : null;
 
 function verifyAdminPassword(request: NextRequest): boolean {
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+  if (!adminPassword) {
+    console.error('[Auth] ADMIN_PASSWORD not configured');
+    return false;
+  }
+
   const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '');
-  const adminPassword = process.env.ADMIN_PASSWORD || 'nafijpro++bd';
+  const providedPassword = authHeader.replace('Bearer ', '').trim();
+
   return providedPassword === adminPassword;
 }
 

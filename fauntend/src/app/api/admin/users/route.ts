@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/users
- * Create a new user
+ * Create a new user via Supabase Auth
  */
 export async function POST(request: NextRequest) {
   try {
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, role = 'user' } = body;
+    const { email, role = 'user', password } = body;
 
     if (!email || !email.trim()) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -140,20 +140,40 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Users] Creating new user: ${email} with role: ${role}`);
 
-    // Insert user directly into users table
-    const { data: newUser, error } = await supabase
-      .from('users')
-      .insert({
-        email: email.trim(),
+    // Generate temporary password if not provided
+    const userPassword = password || Math.random().toString(36).slice(-12) + 'Aa1!';
+
+    // Create auth user first (this generates the UUID)
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: email.trim(),
+      password: userPassword,
+      user_metadata: {
+        username: email.split('@')[0],
         role: role || 'user',
-      })
+      },
+    });
+
+    if (authError || !authData.user) {
+      console.error('[Users] Auth creation error:', authError);
+      return NextResponse.json(
+        { error: `Failed to create auth user: ${authError?.message || 'Unknown error'}` },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[Users] Auth user created: ${authData.user.id}`);
+
+    // Fetch the user record from public.users (trigger should have created it)
+    const { data: newUser, error: fetchError } = await supabase
+      .from('users')
       .select('id, email, username, role, created_at, is_banned, ban_reason')
+      .eq('id', authData.user.id)
       .single();
 
-    if (error) {
-      console.error('[Users] Create error:', error);
+    if (fetchError || !newUser) {
+      console.error('[Users] Failed to fetch created user:', fetchError);
       return NextResponse.json(
-        { error: `Failed to create user: ${error.message}` },
+        { error: `User created but failed to fetch: ${fetchError?.message || 'Unknown error'}` },
         { status: 500 }
       );
     }

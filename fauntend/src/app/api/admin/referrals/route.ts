@@ -135,3 +135,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/admin/referrals/[id]
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    if (!verifyAdminPassword(request)) {
+      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    }
+
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    }
+
+    const id = request.nextUrl.searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Referral ID required' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('special_referrals')
+      .delete()
+      .eq('id', parseInt(id));
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Referral deleted' });
+  } catch (error) {
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
