@@ -31,7 +31,7 @@ export default function APIKeysPage() {
     }
   };
 
-  const handleCreateKey = async (e) => {
+  const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 

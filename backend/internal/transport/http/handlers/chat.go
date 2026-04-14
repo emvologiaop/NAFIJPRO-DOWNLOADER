@@ -1,262 +1,160 @@
 package handlers
 
 import (
-	"context"
+	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"os"
 	"time"
-
-	"internal/app/providers"
 )
 
-// ChatHandler handles AI chat requests
-type ChatHandler struct {
-	providerManager *providers.Manager
-}
+// ChatHandler handles AI chat requests with Groq
+type ChatHandler struct{}
 
 // NewChatHandler creates a new chat handler
-func NewChatHandler(pm *providers.Manager) *ChatHandler {
-	return &ChatHandler{
-		providerManager: pm,
-	}
+func NewChatHandler() *ChatHandler {
+	return &ChatHandler{}
 }
 
-// ChatRequest is the API request format
+// ChatRequest represents incoming chat request
 type ChatRequest struct {
-	Message   string `json:"message"`
-	Model     string `json:"model,omitempty"`
-	WebSearch bool   `json:"web_search,omitempty"`
-	Image     struct {
-		URL string `json:"url,omitempty"`
-	} `json:"image,omitempty"`
+	Message string `json:"message"`
 }
 
-// ChatErrorResponse represents an error response
-type ChatErrorResponse struct {
-	Error       string `json:"error"`
-	Message     string `json:"message"`
-	StatusCode  int    `json:"status_code"`
-	RequestID   string `json:"request_id,omitempty"`
-	RetryAfter  int    `json:"retry_after,omitempty"`
+// ChatResponse represents chat response
+type ChatResponse struct {
+	Success  bool   `json:"success"`
+	Text     string `json:"text"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Error    string `json:"error,omitempty"`
 }
 
-// ServeHTTP implements http.Handler for Chat
-func (h *ChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// Chat handles chat requests with Groq API
+func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Read request body with size limit
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
-	defer r.Body.Close()
-
-	var chatReq ChatRequest
-	if err := json.NewDecoder(r.Body).Decode(&chatReq); err != nil {
-		writeErrorResponse(w, http.StatusBadRequest, "Invalid request body")
+	var req ChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	// Validate required fields
-	if chatReq.Message == "" {
-		writeErrorResponse(w, http.StatusBadRequest, "Message is required")
+	if req.Message == "" {
+		http.Error(w, "Message is required", http.StatusBadRequest)
 		return
 	}
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
-	defer cancel()
-
-	// Build provider request
-	providerReq := &providers.ChatRequest{
-		Message: chatReq.Message,
+	// Get Groq API key from environment
+	groqAPIKey := os.Getenv("GROQ_API_KEY")
+	if groqAPIKey == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ChatResponse{
+			Success: false,
+			Error:   "GROQ_API_KEY not configured",
+		})
+		return
 	}
 
-	if chatReq.Model != "" {
-		providerReq.Model = chatReq.Model
+	// Hardcoded Groq settings
+	groqURL := "https://api.groq.com/openai/v1/chat/completions"
+	model := "mixtral-8x7b-32768"
+
+	// Prepare request to Groq
+	groqReq := map[string]interface{}{
+		"model": model,
+		"messages": []map[string]string{
+			{
+				"role":    "user",
+				"content": req.Message,
+			},
+		},
+		"temperature": 0.7,
+		"max_tokens":  1024,
 	}
 
-	if chatReq.Image.URL != "" {
-		providerReq.Image = &providers.ImageData{
-			URL:    chatReq.Image.URL,
-			Format: "url",
-		}
-	}
-
-	// Call provider manager
-	resp, err := h.providerManager.Chat(ctx, providerReq)
+	reqBody, err := json.Marshal(groqReq)
 	if err != nil {
-		log.Printf("Chat error: %v", err)
-
-		if ctxErr := ctx.Err(); ctxErr == context.DeadlineExceeded {
-			writeErrorResponse(w, http.StatusGatewayTimeout, "Request timeout")
-			return
-		}
-
-		if resp != nil && resp.RateLimit != nil {
-			writeRateLimitResponse(w, resp)
-			return
-		}
-
-		writeErrorResponse(w, http.StatusServiceUnavailable, "AI service unavailable")
+		http.Error(w, "Failed to prepare request", http.StatusInternalServerError)
 		return
 	}
 
-	// Write success response
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("X-Provider", resp.Provider)
-
-	if resp.RateLimit != nil {
-		w.Header().Set("X-RateLimit-Remaining", string(rune(resp.RateLimit.Remaining)))
-		w.Header().Set("X-RateLimit-Reset", resp.RateLimit.Reset.Format(time.RFC3339))
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
-}
-
-// StreamChatHandler handles streaming chat requests
-type StreamChatHandler struct {
-	providerManager *providers.Manager
-}
-
-// NewStreamChatHandler creates a new stream chat handler
-func NewStreamChatHandler(pm *providers.Manager) *StreamChatHandler {
-	return &StreamChatHandler{
-		providerManager: pm,
-	}
-}
-
-// ServeHTTP implements http.Handler for StreamChat
-func (h *StreamChatHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Read request body
-	body, err := io.ReadAll(r.Body)
+	// Make request to Groq
+	httpReq, err := http.NewRequest("POST", groqURL, bytes.NewBuffer(reqBody))
 	if err != nil {
-		writeErrorResponse(w, http.StatusBadRequest, "Failed to read request")
-		return
-	}
-	defer r.Body.Close()
-
-	var chatReq ChatRequest
-	if err := json.Unmarshal(body, &chatReq); err != nil {
-		writeErrorResponse(w, http.StatusBadRequest, "Invalid JSON")
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
 		return
 	}
 
-	// Validate required fields
-	if chatReq.Message == "" {
-		writeErrorResponse(w, http.StatusBadRequest, "Message is required")
-		return
-	}
+	httpReq.Header.Set("Authorization", "Bearer "+groqAPIKey)
+	httpReq.Header.Set("Content-Type", "application/json")
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(r.Context(), 35*time.Second)
-	defer cancel()
-
-	// Build provider request
-	providerReq := &providers.ChatRequest{
-		Message: chatReq.Message,
-	}
-
-	if chatReq.Model != "" {
-		providerReq.Model = chatReq.Model
-	}
-
-	// Set up SSE streaming
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		writeErrorResponse(w, http.StatusInternalServerError, "Streaming not supported")
-		return
-	}
-
-	// Call provider
-	resp, err := h.providerManager.Chat(ctx, providerReq)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr == context.DeadlineExceeded {
-			writeSSEError(w, "Request timeout")
-		} else {
-			writeSSEError(w, "Provider error")
-		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ChatResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to reach Groq API: %v", err),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, "Failed to read response", http.StatusInternalServerError)
 		return
 	}
 
-	if !resp.Success {
-		writeSSEError(w, resp.Error)
+	// Parse Groq response
+	var groqResp map[string]interface{}
+	if err := json.Unmarshal(body, &groqResp); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ChatResponse{
+			Success: false,
+			Error:   "Failed to parse Groq response",
+		})
 		return
 	}
 
-	// Stream response
-	event := map[string]interface{}{
-		"type":      "message",
-		"text":      resp.Text,
-		"provider":  resp.Provider,
-		"model":     resp.Model,
-		"tokens":    resp.TokensUsed,
-		"cost_usd":  resp.CostUSD,
+	// Check for errors
+	if resp.StatusCode != http.StatusOK {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ChatResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Groq API error: %s", body),
+		})
+		return
 	}
 
-	eventJSON, _ := json.Marshal(event)
-	io.WriteString(w, "data: "+string(eventJSON)+"\n\n")
-	flusher.Flush()
+	// Extract message from response
+	choices, ok := groqResp["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ChatResponse{
+			Success: false,
+			Error:   "Invalid response from Groq",
+		})
+		return
+	}
 
-	// Send completion event
-	io.WriteString(w, "event: done\ndata: {}\n\n")
-	flusher.Flush()
-}
+	choice := choices[0].(map[string]interface{})
+	message := choice["message"].(map[string]interface{})
+	text := message["content"].(string)
 
-// writeErrorResponse writes a JSON error response
-func writeErrorResponse(w http.ResponseWriter, statusCode int, message string) {
+	// Return response
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-
-	resp := ChatErrorResponse{
-		Error:      "error",
-		Message:    message,
-		StatusCode: statusCode,
-	}
-
-	json.NewEncoder(w).Encode(resp)
-}
-
-// writeRateLimitResponse writes a rate limit error response
-func writeRateLimitResponse(w http.ResponseWriter, resp *providers.ChatResponse) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusTooManyRequests)
-
-	if resp.RateLimit != nil {
-		w.Header().Set("Retry-After", string(rune(resp.RateLimit.LimitPerMin)))
-	}
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"error":   "rate_limited",
-		"message": "Too many requests",
-		"provider": resp.Provider,
+	json.NewEncoder(w).Encode(ChatResponse{
+		Success:  true,
+		Text:     text,
+		Provider: "groq",
+		Model:    model,
 	})
-}
-
-// writeSSEError writes a Server-Sent Event error
-func writeSSEError(w http.ResponseWriter, message string) {
-	event := map[string]interface{}{
-		"type":    "error",
-		"message": message,
-	}
-
-	eventJSON, _ := json.Marshal(event)
-	io.WriteString(w, "data: "+string(eventJSON)+"\n\n")
-
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
-	}
 }
