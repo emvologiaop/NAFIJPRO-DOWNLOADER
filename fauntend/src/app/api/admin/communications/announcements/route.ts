@@ -19,5 +19,5 @@ export async function POST(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
   }
-  return NextResponse.json({ success: true, message: 'Created' });
+  return NextResponse.json({ success: true, data: {} });
 }

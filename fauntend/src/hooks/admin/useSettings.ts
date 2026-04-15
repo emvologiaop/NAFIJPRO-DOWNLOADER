@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useAdminFetch, getAdminHeaders, buildAdminUrl } from './useAdminFetch';
+import { useAdminFetch } from './useAdminFetch';
 import Swal from 'sweetalert2';
 
 export interface GlobalSettings {
@@ -62,23 +62,19 @@ export function useSettings() {
         if (!confirm.isConfirmed) return false;
 
         try {
-            const res = await fetch(buildAdminUrl('/api/admin/cache'), { 
-                method: 'DELETE',
-                headers: getAdminHeaders()
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast('success', `Cleared ${data.data?.deleted || 0} entries`);
+            const result = await mutate('DELETE', undefined, '/api/admin/cache');
+            if (result.success) {
+                toast('success', `Cleared ${result.data?.deleted || 0} entries`);
                 return true;
             } else {
-                toast('error', data.error || 'Failed to clear');
+                toast('error', result.error || 'Failed to clear');
                 return false;
             }
         } catch {
             toast('error', 'Failed to clear cache');
             return false;
         }
-    }, []);
+    }, [mutate]);
 
     return {
         settings: data,

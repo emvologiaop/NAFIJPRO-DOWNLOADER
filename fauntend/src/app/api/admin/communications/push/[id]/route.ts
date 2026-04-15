@@ -22,7 +22,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const { id } = await params;
   const body = await request.json();
-  return NextResponse.json({ success: true, message: `Push notification ${id} updated`, data: body });
+  return NextResponse.json({ success: true, data: { ...body, message: `Push notification ${id} updated` } });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,5 +30,5 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
   }
   const { id } = await params;
-  return NextResponse.json({ success: true, message: `Push notification ${id} deleted` });
+  return NextResponse.json({ success: true, data: { message: `Push notification ${id} deleted` } });
 }

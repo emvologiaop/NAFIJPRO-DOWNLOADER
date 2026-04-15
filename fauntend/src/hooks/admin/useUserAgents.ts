@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useAdminFetch, getAdminHeaders, buildAdminUrl } from './useAdminFetch';
+import { useAdminFetch } from './useAdminFetch';
 import Swal from 'sweetalert2';
 
 export interface UserAgentPoolStats {
@@ -60,58 +60,48 @@ export function useUserAgentStats() {
 export function useUserAgents(platform: string | null) {
     const [saving, setSaving] = useState(false);
     const url = platform ? `/api/admin/useragents/pool?platform=${platform}` : '/api/admin/useragents/pool';
-    const { data, loading, refetch } = useAdminFetch<PooledUserAgent[]>(url);
+    const { data, loading, refetch, mutate } = useAdminFetch<PooledUserAgent[]>(url);
 
-    const addUserAgent = useCallback(async (uaData: { 
+    const addUserAgent = useCallback(async (uaData: {
         platform: string;
-        user_agent: string; 
+        user_agent: string;
         device_type?: string;
         browser?: string;
-        label?: string; 
+        label?: string;
         note?: string;
     }) => {
         setSaving(true);
         try {
-            const res = await fetch(buildAdminUrl('/api/admin/useragents/pool'), {
-                method: 'POST',
-                headers: getAdminHeaders(),
-                body: JSON.stringify(uaData)
-            });
-            const json = await res.json();
-            if (json.success) {
+            const result = await mutate('POST', uaData);
+            if (result.success) {
                 toast('success', 'User-Agent added');
                 refetch();
                 return true;
             } else {
-                toast('error', json.error || 'Failed to add');
+                toast('error', result.error || 'Failed to add');
                 return false;
             }
         } finally {
             setSaving(false);
         }
-    }, [refetch]);
+    }, [refetch, mutate]);
 
     const updateUserAgent = useCallback(async (id: string, updates: Partial<PooledUserAgent>) => {
         setSaving(true);
         try {
-            const res = await fetch(buildAdminUrl(`/api/admin/useragents/pool/${id}`), {
-                method: 'PATCH',
-                headers: getAdminHeaders(),
-                body: JSON.stringify(updates)
-            });
-            const json = await res.json();
-            if (json.success) {
+            const result = await mutate('PATCH', updates, `/api/admin/useragents/pool/${id}`);
+            if (result.success) {
                 toast('success', 'User-Agent updated');
                 refetch();
                 return true;
             } else {
-                toast('error', json.error || 'Failed to update');
+                toast('error', result.error || 'Failed to update');
                 return false;
             }
         } finally {
             setSaving(false);
         }
-    }, [refetch]);
+    }, [refetch, mutate]);
 
     const deleteUserAgent = useCallback(async (id: string) => {
         const confirm = await Swal.fire({
@@ -125,24 +115,20 @@ export function useUserAgents(platform: string | null) {
         if (!confirm.isConfirmed) return false;
 
         try {
-            const res = await fetch(buildAdminUrl(`/api/admin/useragents/pool/${id}`), { 
-                method: 'DELETE',
-                headers: getAdminHeaders()
-            });
-            const json = await res.json();
-            if (json.success) {
+            const result = await mutate('DELETE', undefined, `/api/admin/useragents/pool/${id}`);
+            if (result.success) {
                 toast('success', 'User-Agent deleted');
                 refetch();
                 return true;
             } else {
-                toast('error', json.error || 'Failed to delete');
+                toast('error', result.error || 'Failed to delete');
                 return false;
             }
         } catch {
             toast('error', 'Failed to delete');
             return false;
         }
-    }, [refetch]);
+    }, [refetch, mutate]);
 
     return {
         userAgents: data || [],

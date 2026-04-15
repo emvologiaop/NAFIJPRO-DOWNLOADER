@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminPassword } from '@/lib/admin-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -26,14 +27,6 @@ const DEFAULT_SERVICE_CONFIG = {
   apiKeyRequired: false,
   lastUpdated: new Date().toISOString(),
 };
-
-function verifyAdminPassword(request: NextRequest): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-  if (!adminPassword) return false;
-  const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '').trim();
-  return providedPassword === adminPassword;
-}
 
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
@@ -190,10 +183,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to reset stats' }, { status: 500 });
       }
 
-      return NextResponse.json({ success: true, message: 'Stats reset' });
+      return NextResponse.json({ success: true });
     }
 
-    return NextResponse.json({ success: true, message: 'Services updated', data: body });
+    return NextResponse.json({ success: true, data: body });
   } catch (error) {
     console.error('[Services] POST error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -225,7 +218,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to patch config' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Services patched', data });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('[Services] PATCH error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -256,7 +249,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update config' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Services updated', data });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('[Services] PUT error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -284,7 +277,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to reset config' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Services reset to defaults' });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[Services] DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

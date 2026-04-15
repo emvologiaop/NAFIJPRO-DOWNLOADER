@@ -16,10 +16,11 @@ export async function POST(request: NextRequest) {
   const keyId = Math.random().toString(36).substring(2, 10);
   return NextResponse.json({
     success: true,
-    id: keyId,
-    key: `sk_${keyId}_${Math.random().toString(36).substring(2)}`,
-    preview: `sk_${keyId}_...`,
-    name: body.name,
-    message: 'API key created',
+    data: {
+      id: keyId,
+      key: `sk_${keyId}_${Math.random().toString(36).substring(2)}`,
+      preview: `sk_${keyId}_...`,
+      name: body.name,
+    },
   });
 }

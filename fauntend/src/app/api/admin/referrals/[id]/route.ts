@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminPassword } from '@/lib/admin-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -7,20 +8,6 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : null;
-
-function verifyAdminPassword(request: NextRequest): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-
-  if (!adminPassword) {
-    console.error('[Auth] ADMIN_PASSWORD not configured');
-    return false;
-  }
-
-  const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '').trim();
-
-  return providedPassword === adminPassword;
-}
 
 /**
  * PATCH /api/admin/referrals/[id]

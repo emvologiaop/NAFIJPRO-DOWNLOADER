@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminPassword } from '@/lib/admin-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -14,37 +15,18 @@ const supabase = supabaseUrl && supabaseServiceKey
   : null;
 
 /**
- * Verify admin password from Authorization header
- */
-function verifyAdminPassword(request: NextRequest): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-
-  if (!adminPassword) {
-    console.error('[Auth] ADMIN_PASSWORD not configured in environment');
-    return false;
-  }
-
-  const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '').trim();
-
-  const isMatch = providedPassword === adminPassword;
-
-  return isMatch;
-}
-
-/**
  * GET /api/admin/users
  * List all users with pagination
  */
 export async function GET(request: NextRequest) {
   try {
     if (!verifyAdminPassword(request)) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
     }
 
     if (!supabase) {
       console.error('Supabase not configured');
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
     }
 
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
@@ -63,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('[Users] Query error:', error);
       return NextResponse.json(
-        { error: `Database error: ${error.message}` },
+        { success: false, error: `Database error: ${error.message}` },
         { status: 500 }
       );
     }
@@ -71,27 +53,33 @@ export async function GET(request: NextRequest) {
     if (!users) {
       console.warn('[Users] No users returned');
       return NextResponse.json({
-        users: [],
-        total: 0,
-        page,
-        limit,
-        totalPages: 0,
+        success: true,
+        data: {
+          users: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        },
       });
     }
 
     console.log(`[Users] Fetched ${users.length} users, total: ${count}`);
 
     return NextResponse.json({
-      users: users,
-      total: count || 0,
-      page,
-      limit,
-      totalPages: Math.ceil((count || 0) / limit),
+      success: true,
+      data: {
+        users: users,
+        total: count || 0,
+        page,
+        limit,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
     });
   } catch (error) {
     console.error('[Users] Exception:', error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }
@@ -104,12 +92,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     if (!verifyAdminPassword(request)) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
     }
 
     if (!supabase) {
       console.error('Supabase not configured');
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
     }
 
     const body = await request.json();
@@ -118,7 +106,7 @@ export async function POST(request: NextRequest) {
     // Handle action-based operations
     if (action === 'updateRole') {
       if (!userId || !role) {
-        return NextResponse.json({ error: 'userId and role are required' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'userId and role are required' }, { status: 400 });
       }
       console.log(`[Users] Updating role for user ${userId} to ${role}`);
 
@@ -131,7 +119,7 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('[Users] Update error:', error);
-        return NextResponse.json({ error: `Failed to update role: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ success: false, error: `Failed to update role: ${error.message}` }, { status: 500 });
       }
 
       return NextResponse.json({ success: true, data: updatedUser });
@@ -139,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'updateStatus') {
       if (!userId || !status) {
-        return NextResponse.json({ error: 'userId and status are required' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'userId and status are required' }, { status: 400 });
       }
       console.log(`[Users] Updating status for user ${userId} to ${status}`);
 
@@ -153,7 +141,7 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('[Users] Update error:', error);
-        return NextResponse.json({ error: `Failed to update status: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ success: false, error: `Failed to update status: ${error.message}` }, { status: 500 });
       }
 
       return NextResponse.json({ success: true, data: updatedUser });
@@ -162,7 +150,7 @@ export async function POST(request: NextRequest) {
     // Handle create action
     if (action === 'create' || !action) {
       if (!email || !email.trim()) {
-        return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'Email is required' }, { status: 400 });
       }
 
       console.log(`[Users] Creating new user: ${email} with role: ${role}`);
@@ -183,7 +171,7 @@ export async function POST(request: NextRequest) {
       if (authError || !authData.user) {
         console.error('[Users] Auth creation error:', authError);
         return NextResponse.json(
-          { error: `Failed to create auth user: ${authError?.message || 'Unknown error'}` },
+          { success: false, error: `Failed to create auth user: ${authError?.message || 'Unknown error'}` },
           { status: 500 }
         );
       }
@@ -200,7 +188,7 @@ export async function POST(request: NextRequest) {
       if (fetchError || !newUser) {
         console.error('[Users] Failed to fetch created user:', fetchError);
         return NextResponse.json(
-          { error: `User created but failed to fetch: ${fetchError?.message || 'Unknown error'}` },
+          { success: false, error: `User created but failed to fetch: ${fetchError?.message || 'Unknown error'}` },
           { status: 500 }
         );
       }
@@ -210,11 +198,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: newUser });
     }
 
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('[Users] Exception:', error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }
@@ -227,18 +215,18 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     if (!verifyAdminPassword(request)) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
     }
 
     if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
     }
 
     const body = await request.json();
     const { userId } = body;
 
     if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 });
     }
 
     console.log(`[Users] Deleting user ${userId}`);
@@ -251,19 +239,19 @@ export async function DELETE(request: NextRequest) {
     if (error) {
       console.error('[Users] Delete error:', error);
       return NextResponse.json(
-        { error: `Failed to delete user: ${error.message}` },
+        { success: false, error: `Failed to delete user: ${error.message}` },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'User deleted successfully',
+      data: null,
     });
   } catch (error) {
     console.error('[Users] Exception:', error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }

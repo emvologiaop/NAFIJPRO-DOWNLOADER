@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-/**
- * Verify admin password
- */
-function verifyAdminPassword(password: string): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-  if (!adminPassword) return false;
-  return password.trim() === adminPassword;
-}
+import { verifyAdminPasswordString } from '@/lib/admin-auth';
 
 /**
  * POST /api/admin/session
@@ -25,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!verifyAdminPassword(password)) {
+    if (!verifyAdminPasswordString(password)) {
       return NextResponse.json(
         { error: 'Invalid password' },
         { status: 401 }

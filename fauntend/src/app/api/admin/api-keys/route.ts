@@ -10,16 +10,16 @@ function verifyAdminPassword(request: NextRequest): boolean {
 
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
-  return NextResponse.json([]);
+  return NextResponse.json({ success: true, data: [] });
 }
 
 export async function DELETE(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
   const { searchParams } = new URL(request.url);
   const keyId = searchParams.get('id');
-  return NextResponse.json({ success: true, message: `API key ${keyId} deleted` });
+  return NextResponse.json({ success: true, data: { message: `API key ${keyId} deleted` } });
 }

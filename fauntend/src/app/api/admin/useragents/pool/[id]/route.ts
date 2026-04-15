@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-function verifyAdminPassword(request: NextRequest): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-  if (!adminPassword) return false;
-  const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '').trim();
-  return providedPassword === adminPassword;
-}
+import { verifyAdminPassword } from '@/lib/admin-auth';
 
 export async function PATCH(
   request: NextRequest,

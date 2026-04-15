@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-function verifyAdminPassword(request: NextRequest): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-  if (!adminPassword) return false;
-  const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '').trim();
-  return providedPassword === adminPassword;
-}
+import { verifyAdminPassword } from '@/lib/admin-auth';
 
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -18,46 +11,49 @@ export async function GET(request: NextRequest) {
 
   if (stats) {
     // Return stats format
-    return NextResponse.json([
-      {
-        platform: 'tiktok',
-        tier: 'public',
-        total: 0,
-        enabled_count: 0,
-        healthy_count: 0,
-        cooldown_count: 0,
-        expired_count: 0,
-        disabled_count: 0,
-        total_uses: 0,
-        total_success: 0,
-        total_errors: 0,
-      }
-    ]);
+    return NextResponse.json({
+      success: true,
+      data: [
+        {
+          platform: 'tiktok',
+          tier: 'public',
+          total: 0,
+          enabled_count: 0,
+          healthy_count: 0,
+          cooldown_count: 0,
+          expired_count: 0,
+          disabled_count: 0,
+          total_uses: 0,
+          total_success: 0,
+          total_errors: 0,
+        }
+      ],
+    });
   }
 
   // Return cookies array format
-  return NextResponse.json([]);
+  return NextResponse.json({ success: true, data: [] });
 }
 
 export async function POST(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
   const body = await request.json();
-  return NextResponse.json({ success: true, message: 'Cookie added', data: body });
+  return NextResponse.json({ success: true, data: body });
 }
 
 export async function PATCH(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
   const body = await request.json();
-  return NextResponse.json({ success: true, message: 'Cookie updated', data: body });
+  return NextResponse.json({ success: true, data: body });
 }
 
 export async function DELETE(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
-  return NextResponse.json({ success: true, message: 'Cookies deleted' });
+  return NextResponse.json({ success: true, data: {} });
 }

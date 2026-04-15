@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminPassword } from '@/lib/admin-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,14 +22,6 @@ const DEFAULT_SYSTEM_CONFIG = {
   maintenance_estimated_end: '',
 };
 
-function verifyAdminPassword(request: NextRequest): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
-  if (!adminPassword) return false;
-  const authHeader = request.headers.get('authorization') || '';
-  const providedPassword = authHeader.replace('Bearer ', '').trim();
-  return providedPassword === adminPassword;
-}
-
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
@@ -37,7 +30,7 @@ export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
       console.error('[SystemConfig] Supabase client not initialized');
-      return NextResponse.json({ success: true, data: DEFAULT_SYSTEM_CONFIG });
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
     const { data, error } = await supabase
@@ -47,15 +40,26 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (error) {
+      // PGRST116 means "not found", which is expected if config hasn't been set yet
+      if (error.code === 'PGRST116') {
+        console.log('[SystemConfig] Config not found, using defaults');
+        return NextResponse.json({ success: true, data: DEFAULT_SYSTEM_CONFIG });
+      }
+
       console.error('[SystemConfig] Database error:', error);
-      // Fallback to default if not found
-      return NextResponse.json({ success: true, data: DEFAULT_SYSTEM_CONFIG });
+      return NextResponse.json(
+        { error: `Database error: ${error.message}` },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ success: true, data: data || DEFAULT_SYSTEM_CONFIG });
   } catch (error) {
     console.error('[SystemConfig] GET error:', error);
-    return NextResponse.json({ success: true, data: DEFAULT_SYSTEM_CONFIG });
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
   }
 }
 
@@ -80,13 +84,20 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[SystemConfig] POST error:', error);
-      return NextResponse.json({ error: 'Failed to update config' }, { status: 500 });
+      return NextResponse.json(
+        { error: `Failed to update config: ${error.message}` },
+        { status: 500 }
+      );
     }
 
+    console.log('[SystemConfig] Config updated successfully');
     return NextResponse.json({ success: true, message: 'Settings updated', data });
   } catch (error) {
     console.error('[SystemConfig] POST error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
   }
 }
 
@@ -112,13 +123,20 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       console.error('[SystemConfig] PATCH error:', error);
-      return NextResponse.json({ error: 'Failed to patch config' }, { status: 500 });
+      return NextResponse.json(
+        { error: `Failed to patch config: ${error.message}` },
+        { status: 500 }
+      );
     }
 
+    console.log('[SystemConfig] Config patched successfully');
     return NextResponse.json({ success: true, message: 'Settings patched', data });
   } catch (error) {
     console.error('[SystemConfig] PATCH error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
   }
 }
 
@@ -133,20 +151,32 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Database not available' }, { status: 500 });
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('system_config')
       .update(DEFAULT_SYSTEM_CONFIG)
-      .eq('id', 'default');
+      .eq('id', 'default')
+      .select()
+      .single();
 
     if (error) {
       console.error('[SystemConfig] DELETE error:', error);
-      return NextResponse.json({ error: 'Failed to reset config' }, { status: 500 });
+      return NextResponse.json(
+        { error: `Failed to reset config: ${error.message}` },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ success: true, message: 'Settings reset to defaults' });
+    return NextResponse.json({
+      success: true,
+      message: 'Settings reset to defaults',
+      data: data || DEFAULT_SYSTEM_CONFIG
+    });
   } catch (error) {
     console.error('[SystemConfig] DELETE error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { status: 500 }
+    );
   }
 }
 

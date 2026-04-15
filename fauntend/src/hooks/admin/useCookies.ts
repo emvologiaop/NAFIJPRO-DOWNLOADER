@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useAdminFetch, getAdminHeaders, buildAdminUrl } from './useAdminFetch';
+import { useAdminFetch } from './useAdminFetch';
 import Swal from 'sweetalert2';
 
 type CookieStatus = 'healthy' | 'cooldown' | 'expired' | 'disabled';
@@ -64,12 +64,12 @@ export function useCookieStats() {
 export function useCookies(platform: string | null) {
     const [saving, setSaving] = useState(false);
     const [tierFilter, setTierFilter] = useState<CookieTier | 'all'>('all');
-    
+
     // Build URL with platform and optional tier filter
-    const url = platform 
+    const url = platform
         ? `/api/admin/cookies/pool?platform=${platform}${tierFilter !== 'all' ? `&tier=${tierFilter}` : ''}`
         : null;
-    const { data, loading, refetch } = useAdminFetch<PooledCookie[]>(url);
+    const { data, loading, refetch, mutate } = useAdminFetch<PooledCookie[]>(url);
 
     const addCookie = useCallback(async (
         cookieData: { cookie: string; label?: string; note?: string; max_uses_per_hour?: number },
@@ -78,46 +78,36 @@ export function useCookies(platform: string | null) {
         if (!platform) return false;
         setSaving(true);
         try {
-            const res = await fetch(buildAdminUrl('/api/admin/cookies/pool'), {
-                method: 'POST',
-                headers: getAdminHeaders(),
-                body: JSON.stringify({ platform, tier, ...cookieData })
-            });
-            const json = await res.json();
-            if (json.success) {
+            const result = await mutate('POST', { platform, tier, ...cookieData });
+            if (result.success) {
                 toast('success', 'Cookie added');
                 refetch();
                 return true;
             } else {
-                toast('error', json.error || 'Failed to add');
+                toast('error', result.error || 'Failed to add');
                 return false;
             }
         } finally {
             setSaving(false);
         }
-    }, [platform, refetch]);
+    }, [platform, refetch, mutate]);
 
     const updateCookie = useCallback(async (id: string, updates: Partial<PooledCookie>) => {
         setSaving(true);
         try {
-            const res = await fetch(buildAdminUrl(`/api/admin/cookies/pool/${id}`), {
-                method: 'PATCH',
-                headers: getAdminHeaders(),
-                body: JSON.stringify(updates)
-            });
-            const json = await res.json();
-            if (json.success) {
+            const result = await mutate('PATCH', updates, `/api/admin/cookies/pool/${id}`);
+            if (result.success) {
                 toast('success', 'Cookie updated');
                 refetch();
                 return true;
             } else {
-                toast('error', json.error || 'Failed to update');
+                toast('error', result.error || 'Failed to update');
                 return false;
             }
         } finally {
             setSaving(false);
         }
-    }, [refetch]);
+    }, [refetch, mutate]);
 
     const deleteCookie = useCallback(async (id: string) => {
         const confirm = await Swal.fire({
@@ -131,24 +121,20 @@ export function useCookies(platform: string | null) {
         if (!confirm.isConfirmed) return false;
 
         try {
-            const res = await fetch(buildAdminUrl(`/api/admin/cookies/pool/${id}`), { 
-                method: 'DELETE',
-                headers: getAdminHeaders()
-            });
-            const json = await res.json();
-            if (json.success) {
+            const result = await mutate('DELETE', undefined, `/api/admin/cookies/pool/${id}`);
+            if (result.success) {
                 toast('success', 'Cookie deleted');
                 refetch();
                 return true;
             } else {
-                toast('error', json.error || 'Failed to delete');
+                toast('error', result.error || 'Failed to delete');
                 return false;
             }
         } catch {
             toast('error', 'Failed to delete');
             return false;
         }
-    }, [refetch]);
+    }, [refetch, mutate]);
 
     const testCookie = useCallback(async (id: string) => {
         try {

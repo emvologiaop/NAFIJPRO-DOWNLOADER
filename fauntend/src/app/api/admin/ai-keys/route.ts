@@ -23,11 +23,11 @@ function verifyAdminPassword(request: NextRequest): boolean {
 
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
 
   if (!supabase) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
   }
 
   try {
@@ -37,18 +37,21 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('[AI Keys] Query error:', error);
-      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
+      return NextResponse.json({ success: false, error: `Database error: ${error.message}` }, { status: 500 });
     }
 
     if (!keys) {
       return NextResponse.json({
-        keys: [],
-        stats: {
-          total: 0,
-          enabled: 0,
-          totalUses: 0,
-          totalErrors: 0,
-          byProvider: { groq: 0, gemini: 0, openai: 0, anthropic: 0, claude: 0, azure: 0, other: 0 },
+        success: true,
+        data: {
+          keys: [],
+          stats: {
+            total: 0,
+            enabled: 0,
+            totalUses: 0,
+            totalErrors: 0,
+            byProvider: { groq: 0, gemini: 0, openai: 0, anthropic: 0, claude: 0, azure: 0, other: 0 },
+          },
         },
       });
     }
@@ -64,11 +67,11 @@ export async function GET(request: NextRequest) {
       }, { groq: 0, gemini: 0, openai: 0, anthropic: 0, claude: 0, azure: 0, other: 0 }),
     };
 
-    return NextResponse.json({ keys, stats });
+    return NextResponse.json({ success: true, data: { keys, stats } });
   } catch (error) {
     console.error('[AI Keys] Exception:', error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }
@@ -76,11 +79,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
 
   if (!supabase) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
   }
 
   try {
@@ -89,13 +92,13 @@ export async function POST(request: NextRequest) {
 
     if (action === 'create' || !action) {
       if (!name && !label) {
-        return NextResponse.json({ error: 'name/label and key are required' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'name/label and key are required' }, { status: 400 });
       }
       if (!key) {
-        return NextResponse.json({ error: 'key is required' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'key is required' }, { status: 400 });
       }
       if (!provider) {
-        return NextResponse.json({ error: 'provider is required' }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'provider is required' }, { status: 400 });
       }
 
       console.log(`[AI Keys] Creating new key for provider: ${provider}`);
@@ -114,17 +117,17 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('[AI Keys] Create error:', error);
-        return NextResponse.json({ error: `Failed to create key: ${error.message}` }, { status: 500 });
+        return NextResponse.json({ success: false, error: `Failed to create key: ${error.message}` }, { status: 500 });
       }
 
       return NextResponse.json({ success: true, data: newKey });
     }
 
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 });
   } catch (error) {
     console.error('[AI Keys] Exception:', error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }
@@ -132,11 +135,11 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
 
   if (!supabase) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Database not configured' }, { status: 500 });
   }
 
   try {
@@ -144,7 +147,7 @@ export async function DELETE(request: NextRequest) {
     const { id } = body;
 
     if (!id) {
-      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'id is required' }, { status: 400 });
     }
 
     console.log(`[AI Keys] Deleting key ${id}`);
@@ -156,14 +159,14 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       console.error('[AI Keys] Delete error:', error);
-      return NextResponse.json({ error: `Failed to delete key: ${error.message}` }, { status: 500 });
+      return NextResponse.json({ success: false, error: `Failed to delete key: ${error.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: 'Key deleted successfully' });
+    return NextResponse.json({ success: true, data: { message: 'Key deleted successfully' } });
   } catch (error) {
     console.error('[AI Keys] Exception:', error);
     return NextResponse.json(
-      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
+      { success: false, error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown'}` },
       { status: 500 }
     );
   }

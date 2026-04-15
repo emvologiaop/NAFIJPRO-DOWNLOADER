@@ -17,3 +17,19 @@ export function verifyAdminPassword(request: NextRequest): boolean {
 
   return providedPassword === adminPassword;
 }
+
+/**
+ * Verify admin password from a raw string
+ * Used by session endpoints where password is passed in request body
+ */
+export function verifyAdminPasswordString(password: string): boolean {
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+  if (!adminPassword) {
+    console.error('[Auth] ADMIN_PASSWORD not configured in environment');
+    return false;
+  }
+
+  return password.trim() === adminPassword;
+}
+

@@ -10,7 +10,7 @@ function verifyAdminPassword(request: NextRequest): boolean {
 
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
   return NextResponse.json({
     success: true,
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!verifyAdminPassword(request)) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 });
   }
   const body = await request.json();
-  return NextResponse.json({ success: true, message: 'Browser profile created', data: body });
+  return NextResponse.json({ success: true, data: body });
 }

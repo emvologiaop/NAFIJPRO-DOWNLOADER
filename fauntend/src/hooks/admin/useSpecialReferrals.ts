@@ -120,7 +120,7 @@ export function useSpecialReferrals() {
         try {
             const headers = getAdminHeaders();
 
-            const res = await fetch(`/api/admin/referrals?id=${id}`, {
+            const res = await fetch(`/api/admin/referrals/${id}`, {
                 method: 'DELETE',
                 headers
             });

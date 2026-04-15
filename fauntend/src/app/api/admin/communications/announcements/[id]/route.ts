@@ -14,7 +14,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
   const { id } = await params;
   const body = await request.json();
-  return NextResponse.json({ success: true, message: `Announcement ${id} updated`, data: body });
+  return NextResponse.json({ success: true, data: { ...body, message: `Announcement ${id} updated` } });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,5 +22,5 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
   }
   const { id } = await params;
-  return NextResponse.json({ success: true, message: `Announcement ${id} deleted` });
+  return NextResponse.json({ success: true, data: { message: `Announcement ${id} deleted` } });
 }
