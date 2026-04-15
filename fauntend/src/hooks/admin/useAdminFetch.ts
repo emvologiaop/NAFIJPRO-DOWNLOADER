@@ -162,9 +162,10 @@ export function getAuthToken(): string | null {
     return null;
 }
 
-// Build full URL (prepend API_URL if relative)
+// Build full URL (do NOT prepend API_URL for /api/ routes - those are local routes)
 export function buildAdminUrl(url: string): string {
     if (url.startsWith('http')) return url;
+    if (url.startsWith('/api/')) return url; // Local routes - don't prepend backend URL
     return `${API_URL}${url}`;
 }
 
