@@ -112,7 +112,8 @@ export default function AdminDashboard() {
         setAdminToken(password);
         setTab('users');
         setPassword('');
-        await loadUsers(1);
+        // Pass password directly to avoid state timing issues
+        await loadUsers(1, password);
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.log('[Login] Error response:', errorData);
@@ -148,10 +149,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const loadUsers = async (page: number) => {
+  const loadUsers = async (page: number, token?: string) => {
+    const authToken = token || adminToken;
     try {
       const res = await fetch(`/api/admin/users?page=${page}&limit=20`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       const data = await res.json();
       if (data.success) {
@@ -182,10 +184,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const loadReferrals = async (page: number) => {
+  const loadReferrals = async (page: number, token?: string) => {
+    const authToken = token || adminToken;
     try {
       const res = await fetch(`/api/admin/referrals?page=${page}&limit=20`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       const data = await res.json();
       if (data.success) {
