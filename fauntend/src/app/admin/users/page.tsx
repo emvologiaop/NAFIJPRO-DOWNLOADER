@@ -221,7 +221,7 @@ function UsersTab() {
         });
         if (!result.isConfirmed) return;
 
-        const res = await fetch(`${API_URL}/api/admin/users`, {
+        const res = await fetch(`/api/admin/users`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ action: 'updateStatus', userId: user.id, status: nextStatus })
@@ -241,7 +241,7 @@ function UsersTab() {
             return;
         }
 
-        const res = await fetch(`${API_URL}/api/admin/users`, {
+        const res = await fetch(`/api/admin/users`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ action: 'updateRole', userId: selectedUser.id, role: editForm.role })
@@ -258,7 +258,7 @@ function UsersTab() {
 
     const handleAddUser = async () => {
         if (!addForm.email || !addForm.password) return;
-        const res = await fetch(`${API_URL}/api/admin/users`, {
+        const res = await fetch(`/api/admin/users`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify({ action: 'createUser', ...addForm })
@@ -286,7 +286,7 @@ function UsersTab() {
         });
         if (!result.isConfirmed) return;
 
-        const res = await fetch(`${API_URL}/api/admin/users`, {
+        const res = await fetch(`/api/admin/users`, {
             method: 'DELETE',
             headers: getAuthHeaders(),
             body: JSON.stringify({ userId: user.id })

@@ -163,13 +163,9 @@ function SettingsContent() {
 
     const getAuthHeaders = (): Record<string, string> => {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        const supabaseKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-        if (supabaseKey) {
-            try {
-                const session = JSON.parse(localStorage.getItem(supabaseKey) || '{}');
-                const token = session?.access_token;
-                if (token) headers['Authorization'] = `Bearer ${token}`;
-            } catch { /* ignore */ }
+        const adminPassword = localStorage.getItem('admin_password');
+        if (adminPassword) {
+            headers['Authorization'] = `Bearer ${adminPassword}`;
         }
         return headers;
     };
@@ -188,7 +184,7 @@ function SettingsContent() {
         if (!result.isConfirmed) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/admin/cache`, { method: 'DELETE', headers: getAuthHeaders() });
+            const res = await fetch(`/api/admin/cache`, { method: 'DELETE', headers: getAuthHeaders() });
             const data = await res.json();
             
             Swal.fire({
@@ -220,7 +216,7 @@ function SettingsContent() {
         if (!result.isConfirmed) return;
         
         try {
-            const res = await fetch(`${API_URL}/api/admin/cookies/migrate`, { method: 'POST', headers: getAuthHeaders() });
+            const res = await fetch(`/api/admin/cookies/migrate`, { method: 'POST', headers: getAuthHeaders() });
             const data = await res.json();
             Swal.fire({
                 toast: true,
