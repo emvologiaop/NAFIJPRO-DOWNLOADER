@@ -98,11 +98,10 @@ CREATE POLICY "Users can insert on signup" ON public.users
 -- CRITICAL: Also fix other tables that might block queries
 -- ─────────────────────────────────────────────────────────────────────
 
--- chat_session_keys - allow public read if needed for auth
+-- chat_session_keys - allow authenticated users to manage their sessions
 ALTER TABLE IF EXISTS public.chat_session_keys ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public can read session keys" ON public.chat_session_keys;
-CREATE POLICY "Authenticated users can read own keys" ON public.chat_session_keys
-  FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Authenticated users can read session keys" ON public.chat_session_keys;
+-- Public read disabled - sessions are access-controlled by session_id secret
 
 -- =====================================================================
 -- Verification Queries
