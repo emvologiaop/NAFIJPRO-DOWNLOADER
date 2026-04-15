@@ -81,16 +81,15 @@ ORDER BY tablename;
 
 -- 10. CHECK FOR ANY RLS DISABLED TABLES
 SELECT '[10] RLS STATUS' as check_type,
-       schemaname,
-       tablename,
-       CASE WHEN rowsecurity THEN 'ENABLED ✅' ELSE 'DISABLED ⚠️' END as rls_status
+       n.nspname as schemaname,
+       c.relname as tablename,
+       CASE WHEN c.relrowsecurity THEN 'ENABLED ✅' ELSE 'DISABLED ⚠️' END as rls_status
 FROM pg_class c
 JOIN pg_namespace n ON c.relnamespace = n.oid
-LEFT JOIN information_schema.tables t ON c.relname = t.table_name AND t.table_schema = n.nspname
 WHERE n.nspname = 'public'
   AND c.relkind = 'r'
   AND c.relname IN ('users', 'special_referrals', 'api_keys', 'chat_session_keys', 'api_key_usage', 'ai_api_keys', 'ai_provider_config', 'ai_provider_usage')
-ORDER BY tablename;
+ORDER BY c.relname;
 
 -- 11. FINAL STATUS
 SELECT '=== DIAGNOSTIC COMPLETE ===' as status;
