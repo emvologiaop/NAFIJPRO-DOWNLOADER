@@ -3,7 +3,7 @@ builder = "docker"
 
 [service]
 type = "web_service"
-name = "downloader-api"
+name = "nafijpro-api"
 runtime = "docker"
-plan = "pro"
-region = "oregon"
+plan = "starter"
+region = "singapore"
