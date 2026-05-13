@@ -1,9 +1,0 @@
-[build]
-builder = "docker"
-
-[service]
-type = "web_service"
-name = "nafijpro-api"
-runtime = "docker"
-plan = "starter"
-region = "singapore"
