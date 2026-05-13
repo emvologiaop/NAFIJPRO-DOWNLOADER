@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { PendingDownloadProvider } from "@/lib/contexts/PendingDownloadContext";
 import { IntlProvider } from "@/components/IntlProvider";
@@ -106,13 +104,6 @@ export default function RootLayout({
             </MaintenanceCheck>
           </PendingDownloadProvider>
         </IntlProvider>
-        {/* Only load Vercel Analytics on production deployments */}
-        {process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production' && (
-          <>
-            <Analytics />
-            <SpeedInsights />
-          </>
-        )}
       </body>
     </html>
   );

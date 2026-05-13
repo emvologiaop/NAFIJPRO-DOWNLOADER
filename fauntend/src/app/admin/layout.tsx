@@ -10,6 +10,7 @@ import {
     ChevronDown, X, MessageSquare, Database
 } from 'lucide-react';
 import { signOut, getSession, getUserProfile, supabase } from '@/lib/supabase';
+import { getAdminHeadersAsync, hasAdminPassword } from '@/hooks/admin/useAdminFetch';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES & CONTEXT
@@ -109,36 +110,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         };
     }, []); // Empty dependency - only run once on mount
 
-    // Admin fetch with auth token injection
+    // Admin fetch with admin password injection
     const adminFetch = useCallback(async (url: string, options: RequestInit = {}) => {
-        const token = getAuthToken();
         const API_URL = process.env.NEXT_PUBLIC_API_URL;
         if (!API_URL) throw new Error('API_URL not configured');
         const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
-        
-        const headers: Record<string, string> = { 
-            'Content-Type': 'application/json',
-            ...(options.headers as Record<string, string> || {})
+
+        const headers: Record<string, string> = {
+            ...(await getAdminHeadersAsync()),
+            ...(options.headers as Record<string, string> || {}),
         };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        
+
         return fetch(fullUrl, { ...options, headers });
     }, []);
-
-    // Helper to get auth token from Supabase session
-    const getAuthToken = (): string | null => {
-        if (typeof window === 'undefined') return null;
-        const supabaseKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-        if (supabaseKey) {
-            try {
-                const session = JSON.parse(localStorage.getItem(supabaseKey) || '{}');
-                return session?.access_token || null;
-            } catch {
-                return null;
-            }
-        }
-        return null;
-    };
 
     // Check Supabase auth session
     useEffect(() => {
@@ -179,6 +163,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         role: 'user',
                         display_name: session.user.email?.split('@')[0],
                     });
+                }
+
+                if (!hasAdminPassword()) {
+                    router.replace('/su');
+                    return;
                 }
 
                 if (mounted) setIsLoading(false);

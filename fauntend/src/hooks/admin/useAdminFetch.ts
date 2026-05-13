@@ -3,7 +3,6 @@
 import useSWR, { SWRConfiguration } from 'swr';
 import { useCallback } from 'react';
 import { API_URL } from '@/lib/config';
-import { supabase } from '@/lib/supabase';
 
 // ============================================================================
 // ERROR HANDLING
@@ -15,12 +14,14 @@ import { supabase } from '@/lib/supabase';
 export class AdminApiError extends Error {
     public readonly isNetworkError: boolean;
     public readonly isServerOffline: boolean;
+    public readonly isUnauthorized: boolean;
     public readonly userMessage: string;
     public readonly originalError?: Error;
 
     constructor(message: string, options?: { 
         isNetworkError?: boolean; 
         isServerOffline?: boolean;
+        isUnauthorized?: boolean;
         userMessage?: string;
         originalError?: Error;
     }) {
@@ -28,6 +29,7 @@ export class AdminApiError extends Error {
         this.name = 'AdminApiError';
         this.isNetworkError = options?.isNetworkError ?? false;
         this.isServerOffline = options?.isServerOffline ?? false;
+        this.isUnauthorized = options?.isUnauthorized ?? false;
         this.userMessage = options?.userMessage ?? message;
         this.originalError = options?.originalError;
     }
@@ -96,70 +98,52 @@ function transformError(error: unknown): AdminApiError {
 // AUTH HELPERS
 // ============================================================================
 
-// Get auth token from Supabase session
-export async function getAuthTokenAsync(): Promise<string | null> {
+export const ADMIN_PASSWORD_STORAGE_KEY = 'nafijpro-admin-password';
+
+let hasRedirectedForUnauthorized = false;
+
+export function getStoredAdminPassword(): string | null {
     if (typeof window === 'undefined') return null;
-    
-    // Priority 1: Try localStorage first (most reliable)
-    const localToken = getAuthToken();
-    if (localToken) {
-        return localToken;
-    }
-    
-    // Priority 2: Fallback to Supabase client
+
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
-            return session.access_token;
-        }
+        return sessionStorage.getItem(ADMIN_PASSWORD_STORAGE_KEY);
     } catch {
-        // Ignore errors
+        return null;
     }
-    
-    return null;
 }
 
-// Sync version for headers (fallback to localStorage)
+export function hasAdminPassword(): boolean {
+    return !!getStoredAdminPassword();
+}
+
+export function clearAdminPassword(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+        sessionStorage.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
+    } catch {
+        // Ignore storage failures.
+    }
+}
+
+function redirectToAdminLogin(): void {
+    if (typeof window === 'undefined' || hasRedirectedForUnauthorized) return;
+
+    hasRedirectedForUnauthorized = true;
+    clearAdminPassword();
+    window.location.replace('/su');
+}
+
+export async function getAuthTokenAsync(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+
+    return getStoredAdminPassword();
+}
+
 export function getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
-    
-    // Try multiple Supabase storage key patterns
-    // Pattern 1: sb-{project-ref}-auth-token (Supabase v2+)
-    // Pattern 2: supabase.auth.token (older versions)
-    const patterns = [
-        // Supabase v2+ pattern
-        () => {
-            const key = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-            if (key) {
-                const data = JSON.parse(localStorage.getItem(key) || '{}');
-                return data?.access_token || null;
-            }
-            return null;
-        },
-        // Alternative: check for session object directly
-        () => {
-            const key = Object.keys(localStorage).find(k => k.includes('supabase') && k.includes('auth'));
-            if (key) {
-                const data = JSON.parse(localStorage.getItem(key) || '{}');
-                // Handle nested session structure
-                if (data?.currentSession?.access_token) return data.currentSession.access_token;
-                if (data?.session?.access_token) return data.session.access_token;
-                if (data?.access_token) return data.access_token;
-            }
-            return null;
-        },
-    ];
 
-    for (const pattern of patterns) {
-        try {
-            const token = pattern();
-            if (token) return token;
-        } catch {
-            continue;
-        }
-    }
-    
-    return null;
+    return getStoredAdminPassword();
 }
 
 // Build full URL (do NOT prepend API_URL for /api/ routes - those are local routes)
@@ -188,6 +172,14 @@ export function getAdminHeaders(): Record<string, string> {
 // Admin fetcher with auth header and improved error handling
 const adminFetcher = async <T>(url: string): Promise<T> => {
     try {
+        if (!hasAdminPassword()) {
+            redirectToAdminLogin();
+            throw new AdminApiError('Admin password missing', {
+                isUnauthorized: true,
+                userMessage: 'Silakan login ulang sebagai admin.',
+            });
+        }
+
         const headers = await getAdminHeadersAsync();
         const res = await fetch(url, { headers });
         
@@ -203,12 +195,14 @@ const adminFetcher = async <T>(url: string): Promise<T> => {
                 if (res.status === 500) {
                     errorMessage = 'Internal server error - check backend logs';
                 } else if (res.status === 401) {
+                    redirectToAdminLogin();
                     errorMessage = 'Unauthorized - please login again';
                 } else if (res.status === 503) {
                     errorMessage = 'Service unavailable - database not configured';
                 }
             }
             throw new AdminApiError(errorMessage, {
+                isUnauthorized: res.status === 401,
                 userMessage: errorMessage,
             });
         }
@@ -254,6 +248,18 @@ export const ADMIN_SWR_CONFIG = {
         revalidateOnReconnect: true,
         dedupingInterval: 30000, // 30s dedup
         errorRetryCount: 2,
+        onErrorRetry: (
+            error: unknown,
+            _key: string,
+            _config: SWRConfiguration,
+            revalidate: (options?: { retryCount?: number }) => void,
+            context: { retryCount: number }
+        ) => {
+            const adminError = error instanceof AdminApiError ? error : null;
+            if (adminError?.isUnauthorized) return;
+            if (context.retryCount >= 2) return;
+            revalidate({ retryCount: context.retryCount });
+        },
     },
     
     // For rarely changing data (services config)
@@ -306,7 +312,7 @@ export function useAdminFetch<T>(
     const fullUrl = url ? buildAdminUrl(url) : null;
     
     const { data, error, isLoading, mutate: swrMutate } = useSWR<T>(
-        skip || !fullUrl ? null : fullUrl,
+        skip || !fullUrl || !hasAdminPassword() ? null : fullUrl,
         adminFetcher,
         swrConfig
     );
@@ -324,6 +330,11 @@ export function useAdminFetch<T>(
     ): Promise<{ success: boolean; data?: unknown; error?: string }> => {
         const targetUrl = customUrl || url;
         if (!targetUrl) return { success: false, error: 'No URL' };
+
+        if (!hasAdminPassword()) {
+            redirectToAdminLogin();
+            return { success: false, error: 'Admin password missing' };
+        }
         
         try {
             const headers = await getAdminHeadersAsync();
@@ -341,6 +352,9 @@ export function useAdminFetch<T>(
                     errorMessage = errorJson.error || errorMessage;
                 } catch {
                     // Response body might be empty
+                }
+                if (res.status === 401) {
+                    redirectToAdminLogin();
                 }
                 return { success: false, error: errorMessage };
             }

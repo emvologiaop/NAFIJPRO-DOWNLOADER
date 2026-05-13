@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { hasAdminPassword } from './useAdminFetch';
 
 /**
  * Hook to check if user has admin authentication
@@ -15,10 +16,7 @@ export function useAuthGuard(requiredRole: 'user' | 'admin' = 'admin') {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        // Check if user has admin password stored (from sessionStorage)
-        const adminPassword = sessionStorage.getItem('nafijpro-admin-password');
-        
-        if (adminPassword) {
+        if (hasAdminPassword()) {
             setIsAuthenticated(true);
             setSkip(false); // Password exists, allow requests
         } else {

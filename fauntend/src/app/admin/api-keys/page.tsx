@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Copy, Trash2, Plus, RefreshCw } from 'lucide-react';
+import { getAdminHeaders, hasAdminPassword } from '@/hooks/admin/useAdminFetch';
 
 interface ApiKeyResponse {
   id: string;
@@ -23,22 +24,6 @@ interface ApiKey {
   expired?: boolean;
 }
 
-const ADMIN_PASSWORD_STORAGE_KEY = 'nafijpro-admin-password';
-
-function getStoredAdminPassword(): string | null {
-  if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(ADMIN_PASSWORD_STORAGE_KEY);
-}
-
-function getAdminHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const password = getStoredAdminPassword();
-  if (password) {
-    headers.Authorization = `Bearer ${password}`;
-  }
-  return headers;
-}
-
 export default function APIKeysPage() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,12 +34,19 @@ export default function APIKeysPage() {
     rate_limit_per_minute: 60,
     expire_in_days: 30,
   });
+  const hasAccess = hasAdminPassword();
 
   useEffect(() => {
+    if (!hasAccess) return;
     fetchKeys();
-  }, []);
+  }, [hasAccess]);
+
+  if (!hasAccess) {
+    return null;
+  }
 
   const fetchKeys = async () => {
+    if (!hasAccess) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/api-keys', {
@@ -72,6 +64,7 @@ export default function APIKeysPage() {
 
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasAccess) return;
     setLoading(true);
 
     try {
@@ -97,6 +90,7 @@ export default function APIKeysPage() {
 
   const handleDeleteKey = async (keyId: string) => {
     if (!confirm('Delete this API key?')) return;
+    if (!hasAccess) return;
 
     try {
       await fetch(`/api/admin/api-keys?id=${keyId}`, {
