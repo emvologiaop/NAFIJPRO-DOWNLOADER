@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { useAdminFetch, ADMIN_SWR_CONFIG } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 
 // ============================================================================
 // TYPES
@@ -106,9 +107,10 @@ interface CommunicationsData {
 // ============================================================================
 
 export function useCommunications() {
+    const { skip } = useAuthGuard();
     const { data, loading, error, refetch, mutate } = useAdminFetch<CommunicationsData>(
         '/api/admin/communications',
-        ADMIN_SWR_CONFIG.default
+        { ...ADMIN_SWR_CONFIG.default, skip }
     );
 
     return {

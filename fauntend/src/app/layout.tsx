@@ -106,7 +106,8 @@ export default function RootLayout({
             </MaintenanceCheck>
           </PendingDownloadProvider>
         </IntlProvider>
-        {process.env.NODE_ENV === 'production' && process.env.VERCEL && (
+        {/* Only load Vercel Analytics on production deployments */}
+        {process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production' && (
           <>
             <Analytics />
             <SpeedInsights />

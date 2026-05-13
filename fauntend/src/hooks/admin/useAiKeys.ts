@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAdminFetch } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 import Swal from 'sweetalert2';
 
 export type AiProvider = 'groq' | 'gemini' | 'openai' | 'anthropic' | 'claude' | 'azure' | 'other';
@@ -72,7 +73,7 @@ const toast = (icon: 'success' | 'error', title: string) => {
 
 export function useAiKeys() {
     const [saving, setSaving] = useState<string | null>(null);
-    const { data, loading, refetch, mutate } = useAdminFetch<AiApiResponse>('/api/admin/ai-keys');
+    const { data, loading, refetch, mutate } = useAdminFetch<AiApiResponse>('/api/admin/ai-keys', { skip: useAuthGuard().skip });
 
     const addKey = useCallback(async (name: string, key: string, provider: AiProvider): Promise<boolean> => {
         setSaving('create');

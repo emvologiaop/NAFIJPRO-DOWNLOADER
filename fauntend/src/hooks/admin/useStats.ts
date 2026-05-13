@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAdminFetch, ADMIN_SWR_CONFIG } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 
 // ============================================================================
 // INTERFACES - Matching backend /api/admin/stats response
@@ -57,6 +58,7 @@ export interface StatsData {
 
 export function useStats(days: number = 7) {
     const [autoRefresh, setAutoRefresh] = useState(false);
+    const { skip } = useAuthGuard();
     
     // Use SWR with conditional auto-refresh
     // Note: adminFetcher already extracts .data from response
@@ -64,6 +66,7 @@ export function useStats(days: number = 7) {
         `/api/admin/stats?days=${days}`,
         {
             ...ADMIN_SWR_CONFIG.default,
+            skip, // Skip requests if not authenticated
             // Auto-refresh every 30s when enabled, otherwise no auto-refresh
             refreshInterval: autoRefresh ? 30000 : 0,
             // Dedupe for 15s to prevent spam

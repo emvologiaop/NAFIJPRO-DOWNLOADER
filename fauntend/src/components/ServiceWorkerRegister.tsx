@@ -125,44 +125,58 @@ export function ServiceWorkerRegister() {
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
 
-    // Register service worker
+    // Register service worker with better error handling
     let updateInterval: NodeJS.Timeout | null = null;
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js', { updateViaCache: 'none' }) // Always check for SW updates
-        .then((registration) => {
-          if (process.env.NODE_ENV === 'development') console.log('[PWA] Service Worker registered');
+      // Use a timeout to avoid blocking page load
+      setTimeout(() => {
+        navigator.serviceWorker
+          .register('/sw.js', { 
+            scope: '/',
+            updateViaCache: 'none' // Always check for SW updates
+          })
+          .then((registration) => {
+            if (process.env.NODE_ENV === 'development') console.log('[PWA] Service Worker registered', registration);
 
-          // Force check for updates immediately on page load
-          registration.update();
+            // Force check for updates on page load
+            registration.update().catch(err => {
+              console.debug('[PWA] Initial update check failed:', err.message);
+            });
 
-          // Check for updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New version available
-                  setUpdateAvailable(true);
-                  if (process.env.NODE_ENV === 'development') console.log('[PWA] New version available');
-                }
+            // Listen for new service worker
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available
+                    setUpdateAvailable(true);
+                    if (process.env.NODE_ENV === 'development') console.log('[PWA] New version available');
+                  }
+                });
+              }
+            });
+
+            // Check for updates periodically (every 5 minutes)
+            updateInterval = setInterval(() => {
+              registration.update().catch(err => {
+                console.debug('[PWA] Periodic update check failed:', err.message);
               });
+            }, 5 * 60 * 1000);
+          })
+          .catch((error) => {
+            // Silently fail - Service Worker is optional
+            // This handles MIME type errors, network errors, etc.
+            console.debug('[PWA] Service Worker registration failed:', error?.message || error);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[PWA] Registration error details:', error);
             }
           });
-
-          // Check for updates periodically (every 5 min instead of 30)
-          updateInterval = setInterval(() => {
-            registration.update();
-          }, 5 * 60 * 1000);
-        })
-        .catch((error) => {
-          console.error('[PWA] SW registration failed:', error);
-        });
+      }, 1000); // Wait 1s after page load before registering
 
       // Handle controller change (new SW activated)
       // NOTE: Don't auto-reload here - let user click "Update Now" button first
-      // The reload happens in handleUpdate() after user confirms
     }
 
     return () => {

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAdminFetch } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 import Swal from 'sweetalert2';
 import type { UserStatus } from '@/lib/types';
 
@@ -43,6 +44,7 @@ const toast = (icon: 'success' | 'error', title: string) => {
 
 export function useUsers(filters: UserFilters = {}) {
     const [saving, setSaving] = useState<string | null>(null);
+    const { skip } = useAuthGuard();
     
     // Build query string
     const params = new URLSearchParams();
@@ -55,7 +57,7 @@ export function useUsers(filters: UserFilters = {}) {
     const queryString = params.toString();
     const url = `/api/admin/users${queryString ? `?${queryString}` : ''}`;
     
-    const { data, loading, error, refetch, mutate } = useAdminFetch<UsersResponse>(url);
+    const { data, loading, error, refetch, mutate } = useAdminFetch<UsersResponse>(url, { skip });
 
     const updateRole = useCallback(async (userId: string, role: 'user' | 'admin') => {
         const confirm = await Swal.fire({

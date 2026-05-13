@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAdminFetch, buildAdminUrl, getAdminHeaders } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 import Swal from 'sweetalert2';
 
 type CookieStatus = 'healthy' | 'cooldown' | 'expired' | 'disabled';
@@ -49,7 +50,8 @@ const toast = (icon: 'success' | 'error', title: string) => {
 };
 
 export function useCookieStats() {
-    const { data, loading, refetch } = useAdminFetch<CookiePoolStats[]>('/api/admin/cookies/pool?stats=true');
+    const { skip } = useAuthGuard();
+    const { data, loading, refetch } = useAdminFetch<CookiePoolStats[]>('/api/admin/cookies/pool?stats=true', { skip });
     
     const getStats = (platform: string, tier: CookieTier = 'public'): CookiePoolStats => {
         return data?.find(s => s.platform === platform && s.tier === tier) || {
@@ -64,12 +66,13 @@ export function useCookieStats() {
 export function useCookies(platform: string | null) {
     const [saving, setSaving] = useState(false);
     const [tierFilter, setTierFilter] = useState<CookieTier | 'all'>('all');
+    const { skip } = useAuthGuard();
 
     // Build URL with platform and optional tier filter
     const url = platform
         ? `/api/admin/cookies/pool?platform=${platform}${tierFilter !== 'all' ? `&tier=${tierFilter}` : ''}`
         : null;
-    const { data, loading, refetch, mutate } = useAdminFetch<PooledCookie[]>(url);
+    const { data, loading, refetch, mutate } = useAdminFetch<PooledCookie[]>(url, { skip });
 
     const addCookie = useCallback(async (
         cookieData: { cookie: string; label?: string; note?: string; max_uses_per_hour?: number },

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useAdminFetch } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 import Swal from 'sweetalert2';
 
 interface PlatformStats {
@@ -47,7 +48,7 @@ const toast = (icon: 'success' | 'error', title: string) => {
 };
 
 export function useServices() {
-    const { data, loading, error, refetch, mutate } = useAdminFetch<ServiceConfig>('/api/admin/services');
+    const { data, loading, error, refetch, mutate } = useAdminFetch<ServiceConfig>('/api/admin/services', { skip: useAuthGuard().skip });
     const [togglingPlatform, setTogglingPlatform] = useState<string | null>(null);
 
     const togglePlatform = useCallback(async (platformId: string, enabled: boolean) => {

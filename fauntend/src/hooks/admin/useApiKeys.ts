@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useAdminFetch } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 import Swal from 'sweetalert2';
 
 import type { ApiKeyType } from '@/lib/types';
@@ -42,7 +43,8 @@ const toast = (icon: 'success' | 'error', title: string) => {
 
 export function useApiKeys() {
     const [saving, setSaving] = useState<string | null>(null);
-    const { data, loading, refetch, mutate } = useAdminFetch<ApiKey[]>('/api/admin/api-keys');
+    const { skip } = useAuthGuard();
+    const { data, loading, refetch, mutate } = useAdminFetch<ApiKey[]>('/api/admin/api-keys', { skip });
 
     const createKey = useCallback(async (name: string, options?: CreateKeyOptions): Promise<{ key?: ApiKey; plainKey?: string } | null> => {
         setSaving('create');

@@ -4,6 +4,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useAdminFetch } from './useAdminFetch';
+import { useAuthGuard } from './useAuthGuard';
 
 export interface BrowserProfile {
     id: string;
@@ -80,7 +81,7 @@ export function useBrowserProfiles() {
         error: fetchError,
         refetch,
         mutate
-    } = useAdminFetch<ProfilesResponse>('/api/admin/browser-profiles');
+    } = useAdminFetch<ProfilesResponse>('/api/admin/browser-profiles', { skip: useAuthGuard().skip });
 
     // Local state for UI error messages
     const [error, setError] = useState<string | null>(null);
