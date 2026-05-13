@@ -8,7 +8,7 @@ interface ApiKeyResponse {
   key: string;
   preview: string;
   name: string;
-  message: string;
+  message?: string;
 }
 
 interface ApiKey {
@@ -21,6 +21,22 @@ interface ApiKey {
   last_used_at?: string;
   expire_at?: string;
   expired?: boolean;
+}
+
+const ADMIN_PASSWORD_STORAGE_KEY = 'nafijpro-admin-password';
+
+function getStoredAdminPassword(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(ADMIN_PASSWORD_STORAGE_KEY);
+}
+
+function getAdminHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const password = getStoredAdminPassword();
+  if (password) {
+    headers.Authorization = `Bearer ${password}`;
+  }
+  return headers;
 }
 
 export default function APIKeysPage() {
@@ -41,9 +57,12 @@ export default function APIKeysPage() {
   const fetchKeys = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/api-keys');
+      const res = await fetch('/api/admin/api-keys', {
+        headers: getAdminHeaders(),
+      });
       const data = await res.json();
-      setKeys(data || []);
+      const nextKeys = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      setKeys(nextKeys);
     } catch (error) {
       console.error('Failed to fetch keys:', error);
     } finally {
@@ -58,13 +77,13 @@ export default function APIKeysPage() {
     try {
       const res = await fetch('/api/admin/api-keys/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
         body: JSON.stringify(formData),
       });
 
       const data = await res.json();
       if (res.ok) {
-        setNewKey(data);
+        setNewKey(data?.data ?? data);
         setFormData({ name: '', rate_limit_per_minute: 60, expire_in_days: 30 });
         setShowCreateForm(false);
         fetchKeys();
@@ -80,7 +99,10 @@ export default function APIKeysPage() {
     if (!confirm('Delete this API key?')) return;
 
     try {
-      await fetch(`/api/admin/api-keys?id=${keyId}`, { method: 'DELETE' });
+      await fetch(`/api/admin/api-keys?id=${keyId}`, {
+        method: 'DELETE',
+        headers: getAdminHeaders(),
+      });
       fetchKeys();
     } catch (error) {
       console.error('Failed to delete key:', error);

@@ -27,6 +27,18 @@ type Referral = {
   created_at: string;
 };
 
+const ADMIN_PASSWORD_STORAGE_KEY = 'nafijpro-admin-password';
+
+function rememberAdminPassword(password: string) {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(ADMIN_PASSWORD_STORAGE_KEY, password);
+}
+
+function clearAdminPassword() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(ADMIN_PASSWORD_STORAGE_KEY);
+}
+
 // Helper to convert errors to readable strings
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -110,6 +122,7 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         setAdminToken(password);
+        rememberAdminPassword(password);
         setTab('users');
         setPassword('');
         // Pass password directly to avoid state timing issues
@@ -157,9 +170,15 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        setUsers(data.data);
-        setUserTotal(data.pagination?.total || 0);
-        setUserPage(page);
+        const payload = data.data || {};
+        const userList = Array.isArray(data.data?.users)
+          ? data.data.users
+          : Array.isArray(payload)
+            ? data.data
+            : [];
+        setUsers(userList);
+        setUserTotal(payload.total || data.pagination?.total || 0);
+        setUserPage(payload.page || page);
       } else {
         console.error('Failed to load users:', data.error);
         Swal.fire({
@@ -509,6 +528,7 @@ export default function AdminDashboard() {
 
   const logout = () => {
     setAdminToken('');
+    clearAdminPassword();
     setTab('login');
     setUsers([]);
     setReferrals([]);
