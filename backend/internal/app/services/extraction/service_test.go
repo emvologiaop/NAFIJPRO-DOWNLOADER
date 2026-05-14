@@ -438,8 +438,7 @@ func TestExtractionService_CookieLane_GuestThenServer(t *testing.T) {
 func TestExtractionService_CookieLane_GuestServerThenUserProvided(t *testing.T) {
 	reg := registry.NewRegistry()
 
-	me := &mockExtractor{}
-	me.err = fmt.Errorf("HTTP 401: Unauthorized")
+	// using a local extractor implementation below; no pre-seeded mock needed
 
 	var calls int
 	reg.Register("lane", []*regexp.Regexp{regexp.MustCompile(`^https://lane2\.com/.*$`)}, func() core.Extractor {

@@ -22,7 +22,7 @@ func NewAPIKeyHandler(db *sql.DB) *APIKeyHandler {
 type APIKeyResponse struct {
 	ID        string         `json:"id"`
 	Key       string         `json:"key,omitempty"` // Only on create/regenerate
-	Preview   string         `json:"key"`           // Display-only preview
+	Preview   string         `json:"preview"`       // Display-only preview
 	Name      string         `json:"name"`
 	Enabled   bool           `json:"enabled"`
 	RateLimit int            `json:"rateLimit"`

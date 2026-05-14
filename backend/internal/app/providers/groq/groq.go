@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"internal/app/providers"
+	"downaria-api/internal/app/providers"
 )
 
 // Groq implements the Provider interface for Groq API
@@ -213,7 +213,7 @@ func (g *Groq) Chat(ctx context.Context, req *providers.ChatRequest) (*providers
 
 	// Record success
 	cost := g.calculateCost(chatResp.Usage.PromptTokens, chatResp.Usage.CompletionTokens)
-	g.recordSuccess(chatResp.Usage.TotalTokens, cost)
+	g.RecordSuccess(chatResp.Usage.TotalTokens, cost)
 
 	return &providers.ChatResponse{
 		Success:    true,

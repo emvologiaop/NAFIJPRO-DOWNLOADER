@@ -384,3 +384,21 @@ func copyAnyMap(input map[string]any) map[string]any {
 	}
 	return out
 }
+
+// fallbackPlatformFromURL determines a best-effort platform name from a URL
+func fallbackPlatformFromURL(targetURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(targetURL))
+	if err != nil {
+		return "generic"
+	}
+	host := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	if host == "" {
+		return "generic"
+	}
+	host = strings.TrimPrefix(host, "www.")
+	parts := strings.Split(host, ".")
+	if len(parts) >= 2 {
+		return parts[len(parts)-2]
+	}
+	return host
+}

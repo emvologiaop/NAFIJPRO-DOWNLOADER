@@ -92,8 +92,9 @@ func sanitizeExtension(ext string) string {
 	return ext
 }
 
-// truncateFilename safely truncates filename while preserving extension
-func truncateFilename(filename string, maxLen int) string {
+// TruncateFilename safely truncates filename while preserving extension
+// Exported to allow reuse across packages/tests.
+func TruncateFilename(filename string, maxLen int) string {
 	if len(filename) <= maxLen {
 		return filename
 	}

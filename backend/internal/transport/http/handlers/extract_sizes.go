@@ -27,8 +27,9 @@ func (h *Handler) enrichVariantSizes(ctx context.Context, result *extractcore.Ex
 	byURL := make(map[string][]variantRef)
 	for mi := range result.Media {
 		for vi := range result.Media[mi].Variants {
+			// Obtain variant pointer and skip if filesize already present
 			variant := &result.Media[mi].Variants[vi]
-			if variant == nil || variant.Filesize > 0 {
+			if variant.Filesize > 0 {
 				continue
 			}
 			targetURL := strings.TrimSpace(variant.URL)
@@ -185,27 +186,7 @@ func (h *Handler) probeStreamContentLength(ctx context.Context, targetURL string
 	return 0
 }
 
-func (h *Handler) fetchHeadMetadata(ctx context.Context, targetURL string, headers map[string]string) proxyHeadMetadata {
-	meta := proxyHeadMetadata{}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, targetURL, nil)
-	if err != nil {
-		return meta
-	}
-	for k, v := range headers {
-		req.Header.Set(k, v)
-	}
-
-	resp, err := h.httpClient.Do(req)
-	if err != nil {
-		return meta
-	}
-	defer resp.Body.Close()
-
-	meta.StatusCode = resp.StatusCode
-	meta.ContentType = strings.TrimSpace(resp.Header.Get("Content-Type"))
-	meta.ContentLength = strings.TrimSpace(resp.Header.Get("Content-Length"))
-	return meta
-}
+// fetchHeadMetadata removed — use fetchProxyHeadMetadata or fetchRangeMetadata instead.
 
 func (h *Handler) fetchRangeMetadata(ctx context.Context, targetURL string, headers map[string]string) proxyHeadMetadata {
 	meta := proxyHeadMetadata{}

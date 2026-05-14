@@ -14,7 +14,6 @@ import (
 	"time"
 
 	apperrors "downaria-api/internal/core/errors"
-	cacheinfra "downaria-api/internal/infra/cache"
 	"downaria-api/internal/infra/network"
 	"downaria-api/internal/shared/util"
 	"downaria-api/internal/transport/http/middleware"
@@ -222,14 +221,7 @@ func (h *Handler) getProxyHeadMetadata(ctx context.Context, cacheKey, targetURL 
 	return meta, nil
 }
 
-func toHeadMetadata(meta proxyHeadMetadata) cacheinfra.HeadMetadata {
-	return cacheinfra.HeadMetadata{
-		StatusCode:    meta.StatusCode,
-		ContentType:   meta.ContentType,
-		ContentLength: meta.ContentLength,
-		FetchedAt:     time.Now().UTC(),
-	}
-}
+// toHeadMetadata removed — prefer constructing cacheinfra.HeadMetadata inline where needed.
 
 func (h *Handler) fetchProxyHeadMetadata(ctx context.Context, targetURL string, headers map[string]string) (proxyHeadMetadata, error) {
 	meta := proxyHeadMetadata{}
